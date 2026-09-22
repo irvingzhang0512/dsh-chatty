@@ -1,0 +1,25 @@
+# dsh-chatty bundle layer: applied automatically when the package is installed
+# as a profile bundle (package.json declares dsh.bundle.patch).
+#
+# The full npm package identifier is required: the client-modules registry
+# resolves the browser bundle by the loader entry name, so a shortened name
+# leaves the UI half silently out of window.__DSH_BOOT__.
+#
+# Override any field in the profile's own cordis.patch.yml, e.g. to switch the
+# STT provider or point the plugin at a private speech endpoint:
+#
+#   - id: dsh-chatty
+#     config:
+#       stt:
+#         provider: siliconflow
+#         credential: siliconflow
+#       tts:
+#         provider: volcano
+#         credential: volcano-speech
+#
+# API keys are never written here: they live in DSH Credentials and the plugin
+# configuration only stores a credential reference name.
+- insert:
+    - id: dsh-chatty
+      name: '@irvingzhang0512/dsh-chatty'
+      config: {}

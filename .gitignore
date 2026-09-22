@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+
+# dsh / env / secrets
+.env
+.env.*
+!.env.example
+.credentials.yaml
+*.pem
+*.key
+*.crt
+
+# build / cache
+dist/
+build/
+.cache/
+*.log
+coverage/
+.test-runs/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

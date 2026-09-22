@@ -1,0 +1,60 @@
+{
+  "name": "@irvingzhang0512/dsh-chatty",
+  "version": "0.1.0",
+  "description": "A voice interaction plugin for DeepSeek Harness, providing long-running speech input, voice commands, speech-friendly response rendering, and interruptible text-to-speech playback.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "lib/*.js",
+    "lib/speech/*.js",
+    "lib/stt/*.js",
+    "lib/tts/*.js",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "voice",
+    "stt",
+    "tts",
+    "vad",
+    "dictation",
+    "speech",
+    "volcano",
+    "siliconflow"
+  ],
+  "scripts": {
+    "build:client": "node scripts/build-client.mjs",
+    "pretest": "node scripts/build-client.mjs",
+    "test": "node --test test/*.test.mjs",
+    "lint": "node scripts/lint.mjs",
+    "prepack": "node scripts/build-client.mjs && node scripts/lint.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": []
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-credentials": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
+    "@deepseek-ai/schemastery": "^3.18.1"
+  }
+}
