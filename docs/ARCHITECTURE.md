@@ -161,17 +161,22 @@ export function createSpeechQueue(options = {})
 ### 2.6 `lib/stt/providers.js` — STT Provider
 
 ```js
-export const STT_PROVIDER_KEYS = ['volcano', 'siliconflow']
+export const STT_PROVIDER_KEYS = ['volcano', 'volcano-classic', 'siliconflow']
 export const STT_DEFAULTS = {
-  volcano:     { credential: 'VOLCANO_SPEECH', model: 'volc.bigasr.auc_turbo', baseUrl: 'https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash', streamUrl: 'wss://openspeech.bytedance.com/api/v3/sauc/bigmodel', resourceId: 'volc.bigasr.sauc.duration', language: 'zh-CN' },
-  siliconflow: { credential: 'SILICONFLOW',    model: 'FunAudioLLM/SenseVoiceSmall', baseUrl: 'https://api.siliconflow.cn/v1', language: 'zh' },
+  // Agent Plan：一把方舟 API Key 两用（X-Api-App-Key / X-Api-Access-Key 同值），
+  // 无批量 HTTP 端点：transcribe 内部走流式协议发完整音频。【实验性：账号需开通豆包语音授权】
+  volcano:         { authMode: 'plan', credential: 'VOLCENGINE_AGENT_PLAN_API_KEY', model: 'doubao-seed-asr-2.0', baseUrl: '', streamUrl: 'wss://openspeech.bytedance.com/api/v3/plan/sauc/bigmodel_nostream', resourceId: 'volc.seedasr.sauc.duration', language: 'zh-CN' },
+  // 经典鉴权：App ID + Access Token 两把钥匙（高级场景保留）。
+  'volcano-classic': { authMode: 'classic', credential: 'VOLCANO_SPEECH', appIdCredential: 'VOLCANO_SPEECH_APPID', model: 'volc.bigasr.auc_turbo', baseUrl: 'https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash', streamUrl: 'wss://openspeech.bytedance.com/api/v3/sauc/bigmodel', resourceId: 'volc.bigasr.sauc.duration', batchResourceId: 'volc.bigasr.auc_turbo', language: 'zh-CN' },
+  siliconflow:     { credential: 'SILICONFLOW_API_KEY', model: 'FunAudioLLM/SenseVoiceSmall', baseUrl: 'https://api.siliconflow.cn/v1', language: 'zh' },
 }
+export const STT_KNOWN_MODELS = { volcano: [{ id, label }], 'volcano-classic': [...], siliconflow: [...] }   // 设置卡下拉数据源
 export function sttCapability(name) -> capability
 export function createSttProvider(name, options = {}) -> provider
 // options: { config, resolveKey(name) -> Promise<string>, fetchImpl = fetch, WebSocketImpl, logger }
 ```
 
-> `STT_DEFAULTS` 是 **Provider 层**默认值，只在插件配置留空时兜底；插件配置的字段名与默认值见 [`CONFIG.md`](./CONFIG.md)。凭据名用大写 + 下划线（`VOLCANO_SPEECH`）是 DSH Credentials 的引用名要求，配置里写 `volcano-speech` 会在宿主侧被归一化到同一个引用（见 §2.11）。
+> `STT_DEFAULTS` 是 **Provider 层**默认值，只在插件配置留空时兜底；插件配置的字段名与默认值见 [`CONFIG.md`](./CONFIG.md)。凭据名用大写 + 下划线（如 `SILICONFLOW_API_KEY`）是 DSH Credentials 的引用名要求，配置里写连字符变体会在宿主侧被归一化到同一个引用（见 §2.11）。装配时 `provider.name` 跟随 key（`volcano` / `volcano-classic`），返回值的 `provider` 字段同理。
 
 `provider`：
 
@@ -186,7 +191,8 @@ export function createSttProvider(name, options = {}) -> provider
 
 `stream = { pushAudio(bytes: Uint8Array) -> void, stop() -> Promise<void>, cancel() -> void, readonly closed: boolean }`
 
-- 火山：批量走 `recognize/flash`（HTTP，Header 认证），流式走 `sauc/bigmodel`（WebSocket 二进制协议，参考 `dsh-voice-hub/lib/volcengine-agent-plan-asr.js`）。
+- 火山 `volcano-classic`：批量走 `recognize/flash`（HTTP，Header 认证），流式走 `sauc/bigmodel`（WebSocket 二进制协议）。
+- 火山 `volcano`（Agent Plan）：无批量 HTTP 端点，`transcribe` 内部用流式协议发整段音频；协议与 classic 相同，鉴权为单把方舟 API Key 两用。【实验性：账号需开通豆包语音授权，见 `scripts/verify-volcano-plan.mjs`】
 - 硅基流动：批量走 OpenAI 兼容 `POST {baseUrl}/audio/transcriptions`（multipart）；流式用 `pseudo-stream.js`（分段批量，产出 partial）。
 - 任何 Provider 缺少 Key 时抛 `Error('... credential not configured')`，`code` 属性为 `'credential'`。
 
@@ -196,7 +202,7 @@ export function createSttProvider(name, options = {}) -> provider
 export const TTS_PROVIDER_KEYS = ['volcano', 'siliconflow']
 export const TTS_DEFAULTS = {
   volcano:     { credential: 'VOLCANO_SPEECH', appIdCredential: 'VOLCANO_SPEECH_APPID', model: '', voice: 'zh_female_shuangkuaisisi_moon_bigtts', cluster: 'volcano_tts', baseUrl: 'https://openspeech.bytedance.com/api/v1/tts', sampleRate: 24000, format: 'pcm' },
-  siliconflow: { credential: 'SILICONFLOW', model: 'FunAudioLLM/CosyVoice2-0.5B', voice: 'FunAudioLLM/CosyVoice2-0.5B:alex', baseUrl: 'https://api.siliconflow.cn/v1', sampleRate: 24000, format: 'pcm' },
+  siliconflow: { credential: 'SILICONFLOW_API_KEY', model: 'FunAudioLLM/CosyVoice2-0.5B', voice: 'FunAudioLLM/CosyVoice2-0.5B:alex', baseUrl: 'https://api.siliconflow.cn/v1', sampleRate: 24000, format: 'pcm' },
 }
 export const STATIC_VOICES            // [{ provider, id, label }]
 export function ttsCapability(name) -> { streaming, voices, speed, emotion, formats, sampleRate }
@@ -293,6 +299,8 @@ export function credentialNameChanged(name) -> boolean  // 归一化后是否与
 | POST | `/dsh-chatty/speech/render` | `{ sessionId?, markdown? }` → `{ ok, segments }` |
 | POST | `/dsh-chatty/speech/stop` | `{ sessionId }` → `{ ok: true }` |
 | POST | `/dsh-chatty/draft/polish` | `{ text }` → `{ ok, text }` |
+| GET | `/dsh-chatty/credentials/state` | 每把所需 Key 的 `{ name, requested, configured, source }` + 凭据文件路径 + 待添加行提示 |
+| POST | `/dsh-chatty/credentials/open` | 用系统编辑器打开凭据文件（不存在时先创建 `refs: {}` 骨架）；需可信来源；测试用 `DSH_CHATTY_SKIP_OPEN=1` 跳过唤起 |
 
 另注册工具 `transcribe_audio`（`file_path`，宿主侧 STT）。
 

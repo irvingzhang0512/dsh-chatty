@@ -13,14 +13,14 @@
 2. **禁止把真实密钥写入项目配置文件、`cordis.patch.yml`、日志或任何 HTTP 响应**；密钥只在宿主半边经 `ctx.credentials` 解析，绝不下发浏览器。
 
 ```yaml
-# ✅ 正确：只存引用名
+# ✅ 正确：只存引用名（默认 provider 组合：STT 硅基流动 / TTS 硅基流动）
 stt:
-  provider: volcano
-  credential: VOLCANO_SPEECH
+  provider: siliconflow
+  credential: SILICONFLOW_API_KEY
 
 # ❌ 错误：明文密钥
 stt:
-  provider: volcano
+  provider: siliconflow
   apiKey: sk-xxxxxxxx
 ```
 
@@ -32,9 +32,10 @@ DSH Credentials 的引用名只接受 `^[A-Za-z_][A-Za-z0-9_]*$`（`@deepseek-ai
 
 | 规范凭据名 | 用途 | 谁需要 |
 |---|---|---|
-| `VOLCANO_SPEECH` | 火山引擎语音 Access Token / Access Key（STT 与 TTS 共用） | 火山 STT / 火山 TTS |
-| `VOLCANO_SPEECH_APPID` | 火山引擎语音 App ID（配置字段 `app_id_credential`） | 火山 STT（`X-Api-App-Key`）/ 火山 TTS |
-| `SILICONFLOW` | 硅基流动 API Key | 硅基流动 STT / TTS |
+| `VOLCENGINE_AGENT_PLAN_API_KEY` | 火山方舟 Agent Plan API Key（一把钥匙；配置字段 `stt.credential`） | `stt.provider: volcano`（Agent Plan，实验性） |
+| `VOLCANO_SPEECH` | 火山引擎语音 Access Token / Access Key | `stt.provider: volcano-classic` / `tts.provider: volcano` |
+| `VOLCANO_SPEECH_APPID` | 火山引擎语音 App ID（配置字段 `app_id_credential`） | 火山经典模式（`X-Api-App-Key`）/ 火山 TTS |
+| `SILICONFLOW_API_KEY` | 硅基流动 API Key | `stt.provider: siliconflow` / `tts.provider: siliconflow` |
 
 ### 2.1 归一化：配置里可以写连字符，DSH Credentials 里必须是规范名
 
@@ -46,22 +47,21 @@ DSH Credentials 的引用名只接受 `^[A-Za-z_][A-Za-z0-9_]*$`（`@deepseek-ai
 |---|---|
 | `volcano-speech` / `VOLCANO_SPEECH` / `Volcano Speech` | `VOLCANO_SPEECH` |
 | `volcano-speech-appid` / `VOLCANO_SPEECH_APPID` | `VOLCANO_SPEECH_APPID` |
-| `siliconflow` / `SILICONFLOW` | `SILICONFLOW` |
+| `siliconflow` / `SILICONFLOW` / `SILICONFLOW_API_KEY` | `SILICONFLOW_API_KEY` |
 
 **但 DSH Credentials 里保存的名字必须是规范形式**（`VOLCANO_SPEECH` 这种大写 + 下划线）：宿主只按归一化后的名字去查凭据，凭据库里存成 `volcano-speech` 是查不到的。配置里写了会被归一化的名字时，宿主会打一条 `凭据名 "…" 已归一化为 "…"` 的警告日志（见 `lib/index.js` 的 `resolveKey`）。
 
 ### 2.2 配置途径
 
-**推荐：DSH 凭据设置页。** 在 DSH Web 的模型 / 凭据设置页把密钥保存为上述**规范名**（引用名），插件只读引用名，不读密钥值。
+**推荐：设置卡里的「凭据」区。** 点 **打开凭据文件**（宿主用系统编辑器打开 `$DSH_HOME/.credentials.yaml`，首次自动生成骨架），在 `refs:` 下按规范名加一行，保存后回设置卡点 **重新检查** 看到 ✓ 即生效。
 
-**等价：`$DSH_HOME/.credentials.yaml`。** 文件只存凭据，版本化结构如下；写入时**不要整体覆盖**已有内容：
+**等价：直接编辑 `$DSH_HOME/.credentials.yaml`。** 文件只存凭据，版本化结构如下；写入时**不要整体覆盖**已有内容：
 
 ```yaml
 version: 1
 refs:
-  VOLCANO_SPEECH: 你的火山语音 Access Token
-  VOLCANO_SPEECH_APPID: 你的火山语音 App ID
-  SILICONFLOW: 你的硅基流动 API Key
+  SILICONFLOW_API_KEY: 你的硅基流动 API Key
+  VOLCENGINE_AGENT_PLAN_API_KEY: 你的方舟 Agent Plan API Key（可选）
 # 保留文件中原有的其他 refs 与 records
 ```
 
@@ -79,10 +79,10 @@ refs:
 
 | 字段 | 类型 | 插件配置默认值 | 含义 |
 |---|---|---|---|
-| `provider` | string | `volcano` | STT Provider：`volcano` 或 `siliconflow` |
-| `model` | string | `''` | 模型覆盖。留空使用 Provider 默认值 |
-| `credential` | string | `VOLCANO_SPEECH` | 凭据引用名（不是密钥）。**默认值固定为 `VOLCANO_SPEECH`，不随 `provider` 变化**，切到 `siliconflow` 时要显式改成 `SILICONFLOW` |
-| `app_id_credential` | string | `VOLCANO_SPEECH_APPID` | 火山引擎 App ID 凭据名（火山鉴权需要 App Key + Access Key 两把） |
+| `provider` | string | `siliconflow` | STT Provider：`siliconflow`（默认）/ `volcano`（Agent Plan，实验性）/ `volcano-classic`（App ID） |
+| `model` | string | `''` | 模型覆盖。留空使用 Provider 默认值（设置卡为下拉） |
+| `credential` | string | `SILICONFLOW_API_KEY` | 凭据引用名（不是密钥）。**设置卡切换 provider 时会自动重置为该 provider 的默认凭据名**（siliconflow → `SILICONFLOW_API_KEY`，volcano → `VOLCENGINE_AGENT_PLAN_API_KEY`，volcano-classic → `VOLCANO_SPEECH`） |
+| `app_id_credential` | string | `VOLCANO_SPEECH_APPID` | 仅 `volcano-classic` 使用：App ID 凭据名（Agent Plan 不需要 App ID） |
 | `streaming` | boolean | `true` | 优先使用流式识别；Provider 不支持时自动回落到批量 |
 | `language` | string | `zh-CN` | 识别语言 |
 | `base_url` | string | `''` | 批量识别接口地址覆盖。**留空用 Provider 默认** |
@@ -97,16 +97,16 @@ refs:
 
 `lib/stt/providers.js` 的 `STT_DEFAULTS`，与「插件配置默认值」是两层：
 
-| 字段 | `volcano` | `siliconflow` |
-|---|---|---|
-| `credential` | `VOLCANO_SPEECH` | `SILICONFLOW` |
-| `appIdCredential` | `VOLCANO_SPEECH_APPID` | — |
-| `model` | `volc.bigasr.auc_turbo` | `FunAudioLLM/SenseVoiceSmall` |
-| `baseUrl` | `https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash` | `https://api.siliconflow.cn/v1` |
-| `streamUrl` | `wss://openspeech.bytedance.com/api/v3/sauc/bigmodel` | — |
-| `resourceId` | `volc.bigasr.sauc.duration` | — |
-| `batchResourceId` | `volc.bigasr.auc_turbo` | — |
-| `language` | `zh-CN` | `zh` |
+| 字段 | `volcano`（Agent Plan） | `volcano-classic` | `siliconflow` |
+|---|---|---|---|
+| `credential` | `VOLCENGINE_AGENT_PLAN_API_KEY` | `VOLCANO_SPEECH` | `SILICONFLOW_API_KEY` |
+| `appIdCredential` | — | `VOLCANO_SPEECH_APPID` | — |
+| `model` | `doubao-seed-asr-2.0` | `volc.bigasr.auc_turbo` | `FunAudioLLM/SenseVoiceSmall` |
+| `baseUrl` | —（无批量 HTTP 端点） | `https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash` | `https://api.siliconflow.cn/v1` |
+| `streamUrl` | `wss://openspeech.bytedance.com/api/v3/plan/sauc/bigmodel_nostream` | `wss://openspeech.bytedance.com/api/v3/sauc/bigmodel` | — |
+| `resourceId` | `volc.seedasr.sauc.duration` | `volc.bigasr.sauc.duration` | — |
+| `batchResourceId` | — | `volc.bigasr.auc_turbo` | — |
+| `language` | `zh-CN` | `zh-CN` | `zh` |
 
 > `resourceId`（流式 sauc）与 `batchResourceId`（批量 recognize/flash）不是同一个值，Provider 内部按用途分别取用。
 
@@ -135,11 +135,11 @@ refs:
 
 | 字段 | 类型 | 插件配置默认值 | 含义 |
 |---|---|---|---|
-| `provider` | string | `volcano` | TTS Provider：`volcano` 或 `siliconflow` |
+| `provider` | string | `siliconflow` | TTS Provider：`siliconflow`（默认）/ `volcano`（经典合成，需 App ID + Token） |
 | `model` | string | `''` | 模型覆盖。留空使用 Provider 默认值 |
-| `voice` | string | `''` | 音色 ID。留空使用 Provider 默认音色 |
-| `credential` | string | `VOLCANO_SPEECH` | 存放 Access Token 的凭据引用名 |
-| `app_id_credential` | string | `VOLCANO_SPEECH_APPID` | 火山 TTS 的 App ID 凭据名 |
+| `voice` | string | `''` | 音色 ID。留空使用 Provider 默认音色（设置卡为下拉） |
+| `credential` | string | `SILICONFLOW_API_KEY` | 凭据引用名（跟随 provider；切 provider 时设置卡自动重置） |
+| `app_id_credential` | string | `VOLCANO_SPEECH_APPID` | 仅 `tts.provider: volcano`（经典合成）使用的 App ID 凭据名 |
 | `cluster` | string | `volcano_tts` | 火山 TTS 集群名 |
 | `speed` | number | `1.0` | 语速倍率 |
 | `format` | string | `pcm` | 输出格式：`pcm`（浏览器 WebAudio 直接播放）/ `mp3` / `wav` |
@@ -161,7 +161,7 @@ refs:
 
 | 字段 | `volcano` | `siliconflow` |
 |---|---|---|
-| `credential` | `VOLCANO_SPEECH` | `SILICONFLOW` |
+| `credential` | `VOLCANO_SPEECH` | `SILICONFLOW_API_KEY` |
 | `appIdCredential` | `VOLCANO_SPEECH_APPID` | — |
 | `model` | `''`（使用默认资源） | `FunAudioLLM/CosyVoice2-0.5B` |
 | `voice` | `zh_female_shuangkuaisisi_moon_bigtts` | `FunAudioLLM/CosyVoice2-0.5B:alex` |
@@ -278,9 +278,9 @@ refs:
 
 ```yaml
 stt:
-  provider: volcano
+  provider: siliconflow
   model: ''
-  credential: VOLCANO_SPEECH
+  credential: SILICONFLOW_API_KEY
   app_id_credential: VOLCANO_SPEECH_APPID
   streaming: true
   language: zh-CN
@@ -302,10 +302,10 @@ stt:
     text: DSH
 
 tts:
-  provider: volcano
+  provider: siliconflow
   model: ''
   voice: ''
-  credential: VOLCANO_SPEECH
+  credential: SILICONFLOW_API_KEY
   app_id_credential: VOLCANO_SPEECH_APPID
   cluster: volcano_tts
   speed: 1.0
@@ -405,7 +405,7 @@ auto_gain_control: true
   config:
     stt:
       provider: siliconflow
-      credential: SILICONFLOW
+      credential: SILICONFLOW_API_KEY
     tts:
       provider: volcano
       credential: VOLCANO_SPEECH
@@ -417,7 +417,7 @@ auto_gain_control: true
 dsh --profile web --dump-config
 ```
 
-设置卡（`Settings → Plugins → Plugin settings → dsh-chatty`，走注入的 `settingsScope`）可以改运行期配置，保存即生效；**密钥不在设置卡里填写**，设置卡只显示凭据是否已配置。
+设置卡（`Settings → Plugins → Plugin settings → dsh-chatty`，走注入的 `settingsScope`）可以改运行期配置，保存即生效；**密钥不在设置卡里填写**——设置卡凭据区显示每把 Key 的 ✓/✗，点「打开凭据文件」在 `$DSH_HOME/.credentials.yaml` 的 `refs:` 下按规范名添加一行即可。
 
 ---
 

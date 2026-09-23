@@ -140,7 +140,7 @@ function volcanoProvider({ config = {}, resolveKey, fetchImpl, calls = [] } = {}
 function siliconFlowProvider({ config = {}, resolveKey, fetchImpl } = {}) {
   return createTtsProvider('siliconflow', {
     config,
-    resolveKey: resolveKey || (async (name) => (name === 'SILICONFLOW' ? 'sk-test-key' : undefined)),
+    resolveKey: resolveKey || (async (name) => (name === 'SILICONFLOW_API_KEY' ? 'sk-test-key' : undefined)),
     fetchImpl,
   })
 }
@@ -161,7 +161,7 @@ test('TTS_PROVIDER_KEYS / TTS_DEFAULTS 形状符合契约', () => {
     format: 'pcm',
   })
   assert.deepEqual(TTS_DEFAULTS.siliconflow, {
-    credential: 'SILICONFLOW',
+    credential: 'SILICONFLOW_API_KEY',
     model: 'FunAudioLLM/CosyVoice2-0.5B',
     voice: 'FunAudioLLM/CosyVoice2-0.5B:alex',
     baseUrl: 'https://api.siliconflow.cn/v1',

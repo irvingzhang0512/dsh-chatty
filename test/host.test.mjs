@@ -81,7 +81,8 @@ function createHarness(config = {}) {
   const secrets = new Map([
     ['VOLCANO_SPEECH', 'volcano-access-key'],
     ['VOLCANO_SPEECH_APPID', 'volcano-app-id'],
-    ['SILICONFLOW', 'siliconflow-key'],
+    ['VOLCENGINE_AGENT_PLAN_API_KEY', 'volcano-plan-key'],
+    ['SILICONFLOW_API_KEY', 'siliconflow-key'],
   ])
   const scope = { get: () => config }
   const ctx = {
@@ -132,6 +133,22 @@ function withFetch(handler, run) {
     .finally(() => { globalThis.fetch = original })
 }
 
+/** 把全局 WebSocket 换成立即失败的假实现：验证「不发起流式/网络」且测试不挂起。 */
+function withBrokenWebSocket(run) {
+  const original = globalThis.WebSocket
+  class BrokenWebSocket {
+    constructor() {
+      setTimeout(() => { if (this.onerror) this.onerror({ message: 'no network in test' }) }, 0)
+    }
+    send() { /* no-op */ }
+    close() { /* no-op */ }
+  }
+  globalThis.WebSocket = BrokenWebSocket
+  return Promise.resolve()
+    .then(run)
+    .finally(() => { globalThis.WebSocket = original })
+}
+
 test('宿主：注册了全部 V1 路由与 transcribe_audio 工具', { skip }, () => {
   const harness = createHarness()
   const expected = [
@@ -162,9 +179,9 @@ test('宿主：/status 下发 UI 需要的配置与 capability', { skip }, async
   assert.equal(res.statusCode, 200)
   const body = res.json()
   assert.equal(body.ok, true)
-  assert.equal(body.stt.provider, 'volcano')
+  assert.equal(body.stt.provider, 'siliconflow')
   assert.equal(body.stt.vad.pre_roll_ms, 400)
-  assert.equal(body.stt.capability.streaming, true)
+  assert.equal(body.stt.capability.streaming, false, 'siliconflow 无原生流式（伪流式提供 partial）')
   assert.equal(body.tts.capability.streaming, true)
   assert.equal(body.voice_control.command_mode, 'exact')
   assert.equal(body.voice_control.commands.send.includes('发送'), true)
@@ -172,17 +189,92 @@ test('宿主：/status 下发 UI 需要的配置与 capability', { skip }, async
   assert.equal(body.draft.auto_send, false)
 })
 
-test('宿主：/config-info 归一化凭据名并报告配置状态', { skip }, async () => {
+test('宿主：/config-info 报告三个 Provider、模型下拉数据与凭据状态', { skip }, async () => {
   const harness = createHarness({ stt: { credential: 'volcano-speech' } })
   const { res } = await call(harness, '/dsh-chatty/config-info')
   const body = res.json()
   assert.equal(body.ok, true)
+  // 经典凭据名的归一化仍然有效。
   const speech = body.stt.credentials.find((item) => item.requested === 'volcano-speech')
   assert.equal(speech.name, 'VOLCANO_SPEECH')
   assert.equal(speech.configured, true)
-  assert.equal(body.stt.providers.map((item) => item.key).join(','), 'volcano,siliconflow')
+  // 三个 Provider + 每家的下拉模型与默认凭据名。
+  assert.equal(body.stt.providers.map((item) => item.key).join(','), 'volcano,volcano-classic,siliconflow')
+  const plan = body.stt.providers.find((item) => item.key === 'volcano')
+  assert.equal(plan.authMode, 'plan')
+  assert.equal(plan.defaultCredential, 'VOLCENGINE_AGENT_PLAN_API_KEY')
+  assert.equal(plan.models[0].id, 'doubao-seed-asr-2.0')
+  const classic = body.stt.providers.find((item) => item.key === 'volcano-classic')
+  assert.equal(classic.authMode, 'classic')
+  // TTS 默认 siliconflow（用户已有 SILICONFLOW_API_KEY）。
+  assert.equal(body.tts.providers[0].key, 'volcano')
   assert.equal(body.tts.voices.length > 0, true)
   assert.deepEqual(body.models, [{ provider: 'test-provider', model: 'test-model' }])
+})
+
+test('宿主：/credentials/state 汇报凭据文件与每把 Key 的状态', { skip }, async () => {
+  const { mkdtemp } = await import('node:fs/promises')
+  const { tmpdir } = await import('node:os')
+  const path = await import('node:path')
+  const dir = await mkdtemp(path.join(tmpdir(), 'dsh-chatty-cred-'))
+  const previous = process.env.DSH_HOME
+  process.env.DSH_HOME = dir
+  try {
+    const harness = createHarness({
+      tts: { app_id_credential: 'CHATTY_MISSING_APPID' },
+      stt: { credential: 'VOLCENGINE_AGENT_PLAN_API_KEY' },
+    })
+    const { res } = await call(harness, '/dsh-chatty/credentials/state')
+    const body = res.json()
+    assert.equal(body.ok, true)
+    assert.equal(body.path, path.join(dir, '.credentials.yaml'))
+    assert.equal(body.exists, false)
+    const plan = body.credentials.find((item) => item.role.includes('Agent Plan'))
+    assert.equal(plan.name, 'VOLCENGINE_AGENT_PLAN_API_KEY')
+    assert.equal(plan.configured, true)
+    const appId = body.credentials.find((item) => item.role.includes('经典') && item.role.includes('STT'))
+    assert.equal(appId.name, 'VOLCANO_SPEECH_APPID')
+    assert.equal(appId.configured, true)
+    // 「未配置」分支：TTS 经典 App ID 在 harness 里给一个不存在的凭据名。
+    const ttsClassic = body.credentials.find((item) => item.role.includes('经典') && item.role.includes('TTS'))
+    assert.equal(ttsClassic.name, 'CHATTY_MISSING_APPID')
+    assert.equal(ttsClassic.configured, false)
+  } finally {
+    if (previous === undefined) delete process.env.DSH_HOME
+    else process.env.DSH_HOME = previous
+    await (await import('node:fs/promises')).rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('宿主：/credentials/open 首次创建凭据骨架文件（不真的唤起编辑器）', { skip }, async () => {
+  const { mkdtemp, readFile, rm } = await import('node:fs/promises')
+  const { tmpdir } = await import('node:os')
+  const path = await import('node:path')
+  const dir = await mkdtemp(path.join(tmpdir(), 'dsh-chatty-cred-'))
+  const previous = process.env.DSH_HOME
+  const previousSkip = process.env.DSH_CHATTY_SKIP_OPEN
+  process.env.DSH_HOME = dir
+  process.env.DSH_CHATTY_SKIP_OPEN = '1'
+  try {
+    const harness = createHarness()
+    const first = await call(harness, '/dsh-chatty/credentials/open', { method: 'POST', body: {} })
+    let body = first.res.json()
+    assert.equal(body.ok, true)
+    assert.equal(body.created, true)
+    assert.equal(body.opened, false)
+    const content = await readFile(body.path, 'utf8')
+    assert.equal(content.includes('refs: {}'), true)
+    assert.equal(content.includes('VOLCENGINE_AGENT_PLAN_API_KEY'), true)
+
+    const second = await call(harness, '/dsh-chatty/credentials/open', { method: 'POST', body: {} })
+    assert.equal(second.res.json().created, false)
+  } finally {
+    if (previous === undefined) delete process.env.DSH_HOME
+    else process.env.DSH_HOME = previous
+    if (previousSkip === undefined) delete process.env.DSH_CHATTY_SKIP_OPEN
+    else process.env.DSH_CHATTY_SKIP_OPEN = previousSkip
+    await rm(dir, { recursive: true, force: true })
+  }
 })
 
 test('宿主：/draft 的 add / edit / undo / clear 与「整句才是指令」', { skip }, async () => {
@@ -255,8 +347,8 @@ test('宿主：/draft polish 走 DSH LLM，失败时原样返回', { skip }, asy
   assert.equal(second.res.json().text, '原样返回')
 })
 
-test('宿主：/stt/transcribe 用火山批量接口识别（假 fetch）', { skip }, async () => {
-  const harness = createHarness()
+test('宿主：/stt/transcribe 经典模式走批量 HTTP（假 fetch）', { skip }, async () => {
+  const harness = createHarness({ stt: { provider: 'volcano-classic', credential: 'VOLCANO_SPEECH', app_id_credential: 'VOLCANO_SPEECH_APPID' } })
   const calls = []
   const fetchStub = async (url, init) => {
     calls.push({ url: String(url), headers: init.headers, body: JSON.parse(init.body) })
@@ -270,12 +362,12 @@ test('宿主：/stt/transcribe 用火山批量接口识别（假 fetch）', { sk
   await withFetch(fetchStub, async () => {
     const { res } = await call(harness, '/dsh-chatty/stt/transcribe', {
       method: 'POST',
-      body: { dataBase64: Buffer.from('RIFF____WAVE').toString('base64'), mimeType: 'audio/wav' },
+      body: { dataBase64: Buffer.from('RIFF____WAVE').toString('base64'), mimeType: 'audio/wav', provider: 'volcano-classic' },
     })
     const body = res.json()
     assert.equal(body.ok, true)
     assert.equal(body.text, '你好，这是识别结果。')
-    assert.equal(body.provider, 'volcano')
+    assert.equal(body.provider, 'volcano-classic')
     assert.equal(calls.length, 1)
     assert.equal(calls[0].headers['X-Api-App-Key'], 'volcano-app-id')
     assert.equal(calls[0].headers['X-Api-Access-Key'], 'volcano-access-key')
@@ -284,8 +376,25 @@ test('宿主：/stt/transcribe 用火山批量接口识别（假 fetch）', { sk
   })
 })
 
+test('宿主：/stt/transcribe 默认 Agent Plan 不走批量 HTTP（plan 无批量端点）', { skip }, async () => {
+  const harness = createHarness({ stt: { provider: 'volcano', credential: 'VOLCENGINE_AGENT_PLAN_API_KEY' } })
+  const calls = []
+  const fetchStub = async (url, init) => { calls.push(String(url)); throw new Error('plan 模式不应发起 HTTP 批量请求') }
+  await withFetch(fetchStub, async () => {
+    await withBrokenWebSocket(async () => {
+      const { res } = await call(harness, '/dsh-chatty/stt/transcribe', {
+        method: 'POST',
+        body: { dataBase64: Buffer.from('RIFF____WAVE').toString('base64'), mimeType: 'audio/wav' },
+      })
+      // plan 模式 transcribe 内部走流式协议（这里流式连接被打桩为失败），但绝不能打批量端点。
+      assert.equal(calls.length, 0)
+      assert.equal(res.json().ok, false)
+    })
+  })
+})
+
 test('宿主：/tts/synthesize 输出 PCM 与正确的响应头（假 fetch）', { skip }, async () => {
-  const harness = createHarness()
+  const harness = createHarness({ tts: { provider: 'volcano' } })
   const pcm = Buffer.alloc(64, 3)
   const payload = JSON.stringify({ code: 3000, data: pcm.toString('base64') })
   const fetchStub = async () => ({
@@ -460,7 +569,8 @@ test('宿主：transcribe_audio 工具读取音频文件并返回转录', { skip
   wav.writeUInt32LE(320, 40)
   await writeFile(file, wav)
 
-  const harness = createHarness()
+  // 经典模式才有批量 HTTP 端点可被 fetch 桩拦截；plan 模式走流式协议（另有协议层用例覆盖）。
+  const harness = createHarness({ stt: { provider: 'volcano-classic', credential: 'VOLCANO_SPEECH', app_id_credential: 'VOLCANO_SPEECH_APPID' } })
   const tool = harness.tools[0]
   const fetchStub = async () => ({
     ok: true,
@@ -472,7 +582,7 @@ test('宿主：transcribe_audio 工具读取音频文件并返回转录', { skip
   try {
     await withFetch(fetchStub, async () => {
       const value = await tool.execute({ file_path: file }, { signal: new AbortController().signal })
-      assert.equal(value.provider, 'volcano')
+      assert.equal(value.provider, 'volcano-classic')
       assert.equal(value.text, '文件里的语音内容')
       assert.equal(Number.isInteger(value.tookMs), true)
       const rendered = tool.output.render({}, value)
