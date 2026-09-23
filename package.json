@@ -38,6 +38,7 @@
     "pretest": "node scripts/build-client.mjs",
     "test": "node --test test/*.test.mjs",
     "lint": "node scripts/lint.mjs",
+    "link:peers": "node scripts/link-peer-deps.mjs",
     "prepack": "node scripts/build-client.mjs && node scripts/lint.mjs"
   },
   "dsh": {

@@ -164,17 +164,25 @@ dsh web                                     # 重启 DSH Web
 
 它是**宿主半边集成测试**：动态 import `lib/index.js`，用假 `ctx`（tools / credentials / webServer / settings / llm）驱动真实路由与工具，因此需要 peer 依赖 `@deepseek-ai/schemastery`、`@deepseek-ai/dsh-tools`、`@deepseek-ai/dsh-credentials`、`@deepseek-ai/dsh-llm`（见 `package.json` 的 `peerDependencies`）。
 
-本仓库没有把它们写进 `dependencies`：**未安装时该文件整体跳过**（文件顶部 `try { await import('../lib/index.js') } catch` 拿到 `loadError`，每个 `test(...)` 都带 `{ skip }`，原因是 `缺少 peer 依赖：…`），`npm test` 仍然全绿。想让它在本地真正跑起来，有两种做法：
+本仓库没有把它们写进 `dependencies`：**未安装时该文件整体跳过**（文件顶部 `try { await import('../lib/index.js') } catch` 拿到 `loadError`，每个 `test(...)` 都带 `{ skip }`，原因是 `缺少 peer 依赖：…`），`npm test` 仍然全绿。想让它在本地真正跑起来，推荐直接用仓库自带脚本：
 
-1. **复用 profile 的 node_modules**：先用 `dsh plugin --profile web add <本仓库路径>` 把插件装进 profile，profile 的 `node_modules` 里就有这批包；把本仓库的 `node_modules/@deepseek-ai` 指向 profile 里那一份，测试与运行时用的是同一套依赖。
-2. **建立目录链接（junction）指向已有的 DSH 安装**：在 `dsh-chatty/node_modules/@deepseek-ai/` 下为每个 peer 依赖建 junction，目标可以是本机任何已装好这些包的目录（例如另一个已 `npm install` 的插件仓库或 DSH 安装目录）：
+```powershell
+node scripts/link-peer-deps.mjs          # 自动探测本机 DSH 宿主安装并建立链接
+node scripts/link-peer-deps.mjs --check  # 只检查是否就绪（CI/装前自检）
+```
 
-   ```powershell
-   New-Item -ItemType Directory -Force node_modules\@deepseek-ai
-   New-Item -ItemType Junction node_modules\@deepseek-ai\dsh-tools `
-     -Target F:\irving-dsh-plugins\dsh-voice-hub\node_modules\@deepseek-ai\dsh-tools
-   # schemastery / dsh-credentials / dsh-llm（以及它们的传递依赖）同理
-   ```
+脚本做的事：读 `package.json` 的 `peerDependencies`，在若干候选目录里找到**同时提供全部 peer 包**的那一个（`$DSH_HOME/node_modules`、profile 的 `node_modules`、全局 npm 安装里的 `@deepseek-ai/dsh/node_modules`，以及同盘其它插件仓库的 `node_modules`），然后在 `dsh-chatty/node_modules/@deepseek-ai/` 下建目录链接（Windows 用 junction，其它平台用符号链接）。
+
+**为什么必须链接而不是复制**：DSH 从 profile 加载插件时，Node 解析符号链接用的是 realpath，所以 `import '@deepseek-ai/dsh-tools'` 会从**插件自己的目录**往上找，而不会用 profile 的 `node_modules`（那里通常也没有这批包）。链接到宿主那一份意味着插件与宿主加载的是同一份文件、同一个模块实例，DSH 升级后也不会留下过期副本。反过来，把 `dsh-chatty/node_modules` 挪走会直接 `ERR_MODULE_NOT_FOUND: Cannot find package '@deepseek-ai/dsh-tools'`——这就是「链接到 profile 之前必须先跑这个脚本」的原因。
+
+也可以手动建链接（目标换成你本机的宿主目录即可）：
+
+```powershell
+New-Item -ItemType Directory -Force node_modules\@deepseek-ai
+New-Item -ItemType Junction node_modules\@deepseek-ai\dsh-tools `
+  -Target "$env:APPDATA\npm\node_modules\@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-tools"
+# schemastery / dsh-credentials / dsh-llm / dsh-host-webserver / cordis 同理
+```
 
 `node_modules/` 已被仓库根 `.gitignore` 忽略，链接不会进入版本库。
 

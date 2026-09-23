@@ -7,7 +7,7 @@
 
 ### Added
 
-- 暂无。新改动按分节追加在本节下，并在发版时整体移入对应版本。
+- **peer 依赖落地脚本** `scripts/link-peer-deps.mjs`（`npm run link:peers`）：把 `peerDependencies` 从本机 DSH 宿主安装链接到 `node_modules/@deepseek-ai/`，`--check` 可做装前自检。原因：DSH 从 profile 加载插件时 Node 按 realpath 解析符号链接，插件必须能**从自己目录**解析到 `@deepseek-ai/*`，而 profile 的 `node_modules` 通常不提供这批包；链接到宿主那一份可保证与宿主加载的是同一个模块实例。
 
 ## [0.1.0] - 2026-09-23
 
