@@ -9,6 +9,10 @@
 
 - **peer 依赖落地脚本** `scripts/link-peer-deps.mjs`（`npm run link:peers`）：把 `peerDependencies` 从本机 DSH 宿主安装链接到 `node_modules/@deepseek-ai/`，`--check` 可做装前自检。原因：DSH 从 profile 加载插件时 Node 按 realpath 解析符号链接，插件必须能**从自己目录**解析到 `@deepseek-ai/*`，而 profile 的 `node_modules` 通常不提供这批包；链接到宿主那一份可保证与宿主加载的是同一个模块实例。
 
+### Fixed
+
+- 设置卡（`plugins.item` / `plugins.row.config` / `settings.plugin.item`）的折叠头部与 DSH 原生设置卡对齐：标题一行、描述一行（`dch-card-text` 上下堆叠），右侧可旋转的展开箭头（优先用 `@deepseek-ai/dsh-client-ui-primitives` 的 ChevronDown 图标），`14px 16px` 内边距、12px 圆角与 body 顶部分隔线。修复此前标题与描述挤在同一行、卡片高度异常偏小、看不出可展开的问题。
+
 ## [0.1.0] - 2026-09-23
 
 ### Added
