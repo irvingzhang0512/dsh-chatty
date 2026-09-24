@@ -700,6 +700,48 @@ test('火山 plan：transcribe 复用流式会话（不发 HTTP，经假 WS 等 
   assert.equal(socket.closed, true)
 })
 
+test('火山 plan：transcribe 收到 WAV 时剥掉容器头，只推裸 PCM', async () => {
+  FakeWebSocket.reset()
+  const fetchImpl = fakeFetch(() => jsonResponse({ result: { text: '不应走 HTTP' } }))
+  const provider = createSttProvider('volcano', { resolveKey, fetchImpl, WebSocketImpl: FakeWebSocket })
+
+  // 44 字节 WAV 头 + PCM 数据；Volcano 流式会话只认裸 PCM，WAV 头必须被剥掉
+  const pcm = new Uint8Array([9, 8, 7, 6, 5, 4])
+  const wav = new Uint8Array(44 + pcm.length)
+  wav.set(Buffer.from('RIFF', 'ascii'), 0)
+  wav.set(Buffer.from('WAVE', 'ascii'), 8)
+  wav.set(Buffer.from('data', 'ascii'), 36)
+  new DataView(wav.buffer).setUint32(40, pcm.length, true)
+  wav.set(pcm, 44)
+
+  const pending = provider.transcribe({ audio: wav, mimeType: 'audio/wav' })
+  await tick()
+  const socket = FakeWebSocket.last()
+  socket.emit('open')
+  await tick()
+  socket.emit('message', serverResponseFrame({ result: { text: 'ok' } }, { sequence: 2, last: true }))
+  const result = await pending
+
+  const audioFrames = socket.sent.map((frame) => decodeClientFrame(frame))
+    .filter((frame) => frame.type === VOLCANO_MESSAGE_TYPE.AUDIO_ONLY_REQUEST)
+  assert.ok(audioFrames.length >= 1, '应发出音频帧')
+  const allAudio = Buffer.concat(audioFrames.map((frame) => frame.payload))
+  // 剥头后只应有裸 PCM：任何帧里都不允许出现 RIFF 容器头
+  assert.equal(allAudio.toString('latin1').includes('RIFF'), false, 'WAV 头不应被推给服务端')
+  assert.equal(result.text, 'ok')
+  assert.equal(fetchImpl.calls.length, 0)
+})
+
+test('火山 plan：transcribe 收到不支持的容器格式（webm）时抛清晰错误', async () => {
+  FakeWebSocket.reset()
+  const fetchImpl = fakeFetch(() => jsonResponse({ result: { text: '不应走 HTTP' } }))
+  const provider = createSttProvider('volcano', { resolveKey, fetchImpl, WebSocketImpl: FakeWebSocket })
+  await assert.rejects(
+    provider.transcribe({ audio: new Uint8Array([0x1a, 0x45, 0xdf, 0xa3]), mimeType: 'audio/webm' }),
+    (err) => err.code === 'audio-format' && /WAV\/PCM/.test(err.message),
+  )
+})
+
 // ---------------------------------------------------------------- 伪流式
 
 test('createPseudoStream 需要注入 transcribe', () => {
