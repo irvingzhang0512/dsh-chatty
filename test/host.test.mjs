@@ -179,9 +179,9 @@ test('宿主：/status 下发 UI 需要的配置与 capability', { skip }, async
   assert.equal(res.statusCode, 200)
   const body = res.json()
   assert.equal(body.ok, true)
-  assert.equal(body.stt.provider, 'siliconflow')
+  assert.equal(body.stt.provider, 'volcano')
   assert.equal(body.stt.vad.pre_roll_ms, 400)
-  assert.equal(body.stt.capability.streaming, false, 'siliconflow 无原生流式（伪流式提供 partial）')
+  assert.equal(body.stt.capability.streaming, true, 'volcano 走 plan 流式识别')
   assert.equal(body.tts.capability.streaming, true)
   assert.equal(body.voice_control.command_mode, 'exact')
   assert.equal(body.voice_control.commands.send.includes('发送'), true)
@@ -375,7 +375,7 @@ test('宿主：/stt/transcribe 火山 Agent Plan 不走批量 HTTP（plan 无批
 })
 
 test('宿主：/tts/synthesize 硅基流动输出 PCM 与正确的响应头（假 fetch）', { skip }, async () => {
-  const harness = createHarness()
+  const harness = createHarness({ tts: { provider: 'siliconflow', credential: 'SILICONFLOW_API_KEY' } })
   const pcm = Buffer.alloc(64, 3)
   const fetchStub = async (url, init) => {
     const body = JSON.parse(init.body)

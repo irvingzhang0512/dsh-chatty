@@ -41,7 +41,7 @@ const model = argValue('--model') || 'doubao-seed-asr-2.0'
 //   bearer        Authorization: Bearer <API Key>（方舟 v3 OpenAPI 风格）
 //   bearer+dual   三者都带
 //   appkey-only   仅 X-Api-App-Key
-const authMode = argValue('--auth') || 'dual'
+const authMode = argValue('--auth') || 'xapikey'
 
 // ── 1. 读取凭据 ────────────────────────────────────────────────────────
 const home = process.env.DSH_HOME || join(homedir(), '.dsh')
@@ -65,12 +65,14 @@ const apiKey = readApiKey()
 console.log(`[1/3] 凭据 OK：${keyName} = ${apiKey.slice(0, 8)}…（共 ${apiKey.length} 字符）；鉴权组合：${authMode}`)
 console.log(`[2/3] 连接 ${url}`)
 
+// xapikey（默认，实测可用）：单一 X-Api-Key 头；其余组合保留用于排查。
 const authHeaders = {
+  xapikey: { 'X-Api-Key': apiKey },
   dual: { 'X-Api-App-Key': apiKey, 'X-Api-Access-Key': apiKey },
   bearer: { Authorization: `Bearer ${apiKey}` },
   'bearer+dual': { 'X-Api-App-Key': apiKey, 'X-Api-Access-Key': apiKey, Authorization: `Bearer ${apiKey}` },
   'appkey-only': { 'X-Api-App-Key': apiKey },
-}[authMode] || { 'X-Api-App-Key': apiKey, 'X-Api-Access-Key': apiKey }
+}[authMode] || { 'X-Api-Key': apiKey }
 
 // ── 2. 连接并完成一次最小识别会话 ──────────────────────────────────────
 const socket = new MinimalWebSocket(url, {

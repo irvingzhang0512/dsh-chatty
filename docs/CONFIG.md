@@ -32,10 +32,10 @@ DSH Credentials 的引用名只接受 `^[A-Za-z_][A-Za-z0-9_]*$`（`@deepseek-ai
 
 | 规范凭据名 | 用途 | 谁需要 |
 |---|---|---|
-| `VOLCENGINE_AGENT_PLAN_API_KEY` | 火山方舟 Agent Plan API Key（一把钥匙；配置字段 `stt.credential`） | `stt.provider: volcano`（Agent Plan，实验性） |
-| `VOLCANO_SPEECH` | 火山引擎语音 Access Token / Access Key | `stt.provider: volcano-classic` / `tts.provider: volcano` |
-| `VOLCANO_SPEECH_APPID` | 火山引擎语音 App ID（配置字段 `app_id_credential`） | 火山经典模式（`X-Api-App-Key`）/ 火山 TTS |
+| `VOLCENGINE_AGENT_PLAN_API_KEY` | 火山方舟 Agent Plan API Key（一把钥匙通吃语音识别与合成；配置字段 `stt.credential` / `tts.credential`） | `stt.provider: volcano` / `tts.provider: volcano`（默认） |
 | `SILICONFLOW_API_KEY` | 硅基流动 API Key | `stt.provider: siliconflow` / `tts.provider: siliconflow` |
+
+> 火山「经典（App ID + Access Token）」鉴权已在 v0.3 移除；如仍有旧凭据（`VOLCANO_SPEECH` / `VOLCANO_SPEECH_APPID`），它们不再被任何 provider 使用。
 
 ### 2.1 归一化：配置里可以写连字符，DSH Credentials 里必须是规范名
 
@@ -79,10 +79,9 @@ refs:
 
 | 字段 | 类型 | 插件配置默认值 | 含义 |
 |---|---|---|---|
-| `provider` | string | `siliconflow` | STT Provider：`siliconflow`（默认）/ `volcano`（Agent Plan，实验性）/ `volcano-classic`（App ID） |
+| `provider` | string | `volcano` | STT Provider：`volcano`（Agent Plan 语音识别 2.0，默认）/ `siliconflow` |
 | `model` | string | `''` | 模型覆盖。留空使用 Provider 默认值（设置卡为下拉） |
-| `credential` | string | `SILICONFLOW_API_KEY` | 凭据引用名（不是密钥）。**设置卡切换 provider 时会自动重置为该 provider 的默认凭据名**（siliconflow → `SILICONFLOW_API_KEY`，volcano → `VOLCENGINE_AGENT_PLAN_API_KEY`，volcano-classic → `VOLCANO_SPEECH`） |
-| `app_id_credential` | string | `VOLCANO_SPEECH_APPID` | 仅 `volcano-classic` 使用：App ID 凭据名（Agent Plan 不需要 App ID） |
+| `credential` | string | `VOLCENGINE_AGENT_PLAN_API_KEY` | 凭据引用名（不是密钥）。**设置卡切换 provider 时会自动重置为该 provider 的默认凭据名**（volcano → `VOLCENGINE_AGENT_PLAN_API_KEY`，siliconflow → `SILICONFLOW_API_KEY`） |
 | `streaming` | boolean | `true` | 优先使用流式识别；Provider 不支持时自动回落到批量 |
 | `language` | string | `zh-CN` | 识别语言 |
 | `base_url` | string | `''` | 批量识别接口地址覆盖。**留空用 Provider 默认** |
@@ -97,18 +96,16 @@ refs:
 
 `lib/stt/providers.js` 的 `STT_DEFAULTS`，与「插件配置默认值」是两层：
 
-| 字段 | `volcano`（Agent Plan） | `volcano-classic` | `siliconflow` |
-|---|---|---|---|
-| `credential` | `VOLCENGINE_AGENT_PLAN_API_KEY` | `VOLCANO_SPEECH` | `SILICONFLOW_API_KEY` |
-| `appIdCredential` | — | `VOLCANO_SPEECH_APPID` | — |
-| `model` | `doubao-seed-asr-2.0` | `volc.bigasr.auc_turbo` | `FunAudioLLM/SenseVoiceSmall` |
-| `baseUrl` | —（无批量 HTTP 端点） | `https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash` | `https://api.siliconflow.cn/v1` |
-| `streamUrl` | `wss://openspeech.bytedance.com/api/v3/plan/sauc/bigmodel_nostream` | `wss://openspeech.bytedance.com/api/v3/sauc/bigmodel` | — |
-| `resourceId` | `volc.seedasr.sauc.duration` | `volc.bigasr.sauc.duration` | — |
-| `batchResourceId` | — | `volc.bigasr.auc_turbo` | — |
-| `language` | `zh-CN` | `zh-CN` | `zh` |
+| 字段 | `volcano`（Agent Plan） | `siliconflow` |
+|---|---|---|
+| `credential` | `VOLCENGINE_AGENT_PLAN_API_KEY` | `SILICONFLOW_API_KEY` |
+| `model` | `doubao-seed-asr-2.0` | `FunAudioLLM/SenseVoiceSmall` |
+| `baseUrl` | —（无批量 HTTP 端点） | `https://api.siliconflow.cn/v1` |
+| `streamUrl` | `wss://openspeech.bytedance.com/api/v3/plan/sauc/bigmodel_nostream` | — |
+| `resourceId` | `volc.seedasr.sauc.duration` | — |
+| `language` | `zh-CN` | `zh` |
 
-> `resourceId`（流式 sauc）与 `batchResourceId`（批量 recognize/flash）不是同一个值，Provider 内部按用途分别取用。
+> 火山「经典（App ID + Access Token，批量 recognize/flash + sauc/bigmodel）」已在 v0.3 移除。
 
 ### 3.2 `stt.vad`
 
@@ -135,12 +132,12 @@ refs:
 
 | 字段 | 类型 | 插件配置默认值 | 含义 |
 |---|---|---|---|
-| `provider` | string | `siliconflow` | TTS Provider：`siliconflow`（默认）/ `volcano`（经典合成，需 App ID + Token） |
+| `provider` | string | `volcano` | TTS Provider：`volcano`（Agent Plan 语音合成 2.0，默认）/ `siliconflow` |
 | `model` | string | `''` | 模型覆盖。留空使用 Provider 默认值 |
 | `voice` | string | `''` | 音色 ID。留空使用 Provider 默认音色（设置卡为下拉） |
-| `credential` | string | `SILICONFLOW_API_KEY` | 凭据引用名（跟随 provider；切 provider 时设置卡自动重置） |
-| `app_id_credential` | string | `VOLCANO_SPEECH_APPID` | 仅 `tts.provider: volcano`（经典合成）使用的 App ID 凭据名 |
-| `cluster` | string | `volcano_tts` | 火山 TTS 集群名 |
+| `credential` | string | `VOLCENGINE_AGENT_PLAN_API_KEY` | 凭据引用名（跟随 provider；切 provider 时设置卡自动重置） |
+| `stream_url` | string | `''` | 合成端点覆盖。留空用 Provider 默认 |
+| `resource_id` | string | `''` | 合成资源 ID 覆盖。留空用 Provider 默认 |
 | `speed` | number | `1.0` | 语速倍率 |
 | `format` | string | `pcm` | 输出格式：`pcm`（浏览器 WebAudio 直接播放）/ `mp3` / `wav` |
 | `sample_rate` | number | `24000` | 输出采样率（响应头 `X-Audio-Sample-Rate` 回传） |
@@ -159,17 +156,17 @@ refs:
 
 `lib/tts/providers.js` 的 `TTS_DEFAULTS`，与「插件配置默认值」是两层：
 
-| 字段 | `volcano`（Agent Plan 合成） | `siliconflow` |
+| 字段 | `volcano`（Agent Plan 合成 2.0） | `siliconflow` |
 |---|---|---|
 | `credential` | `VOLCENGINE_AGENT_PLAN_API_KEY` | `SILICONFLOW_API_KEY` |
 | `model` | `''`（使用默认资源） | `FunAudioLLM/CosyVoice2-0.5B` |
-| `voice` | `zh_female_shuangkuaisisi_moon_bigtts` | `FunAudioLLM/CosyVoice2-0.5B:alex` |
-| `baseUrl` | `https://openspeech.bytedance.com/api/v3/tts/unidirectional` | `https://api.siliconflow.cn/v1` |
-| `resourceId` | `volc.bigtts` | — |
+| `voice` | `zh_female_shuangkuaisisi_uranus_bigtts` | `FunAudioLLM/CosyVoice2-0.5B:alex` |
+| `baseUrl` | `https://openspeech.bytedance.com/api/v3/plan/tts/unidirectional` | `https://api.siliconflow.cn/v1` |
+| `resourceId` | `seed-tts-2.0` | — |
 | `sampleRate` | `24000` | `24000` |
 | `format` | `pcm` | `pcm` |
 
-> 火山 volcano TTS 为 **Agent Plan 单向流式合成**（HTTP POST），与 STT 共用同一把方舟 API Key；账号需开通豆包语音授权（`scripts/verify-tts-plan.mjs` 验证）。
+> 火山 volcano TTS 为 **Agent Plan 语音合成 2.0**（HTTP POST 单请求，`X-Api-Key` 鉴权），与 STT 共用同一把方舟 API Key。音色须用 2.0 代（`*_uranus_bigtts`）；1.0 代音色（`*_moon_bigtts`）会返回 55000000 音色不匹配。
 
 > 静态音色表见 `lib/tts/providers.js` 的 `STATIC_VOICES`；`GET /dsh-chatty/tts/voices` 查询失败时回落到它。
 
@@ -279,10 +276,9 @@ refs:
 
 ```yaml
 stt:
-  provider: siliconflow
+  provider: volcano
   model: ''
-  credential: SILICONFLOW_API_KEY
-  app_id_credential: VOLCANO_SPEECH_APPID
+  credential: VOLCENGINE_AGENT_PLAN_API_KEY
   streaming: true
   language: zh-CN
   base_url: ''
@@ -303,12 +299,10 @@ stt:
     text: DSH
 
 tts:
-  provider: siliconflow
+  provider: volcano
   model: ''
   voice: ''
-  credential: SILICONFLOW_API_KEY
-  app_id_credential: VOLCANO_SPEECH_APPID
-  cluster: volcano_tts
+  credential: VOLCENGINE_AGENT_PLAN_API_KEY
   speed: 1.0
   format: pcm
   sample_rate: 24000

@@ -123,14 +123,14 @@ test('端到端：自定义 Header 随握手发出，二进制/文本消息回�
   const server = await startEchoServer()
   try {
     const socket = new MinimalWebSocket(server.url, {
-      headers: { 'X-Api-App-Key': 'app-123', 'X-Api-Access-Key': 'secret-456' },
+      headers: { 'X-Custom-Proof-A': 'app-123', 'X-Custom-Proof-B': 'secret-456' },
     })
     const opened = waitFor(socket, 'open')
     await opened
     assert.equal(socket.readyState, MinimalWebSocket.OPEN)
     assert.equal(server.headersSeen.length, 1)
-    assert.equal(server.headersSeen[0]['x-api-app-key'], 'app-123')
-    assert.equal(server.headersSeen[0]['x-api-access-key'], 'secret-456')
+    assert.equal(server.headersSeen[0]['x-custom-proof-a'], 'app-123')
+    assert.equal(server.headersSeen[0]['x-custom-proof-b'], 'secret-456')
     assert.equal(server.headersSeen[0].upgrade.toLowerCase(), 'websocket')
 
     const binary = new Uint8Array([1, 2, 3, 250, 251])

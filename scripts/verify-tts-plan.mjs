@@ -26,8 +26,8 @@ function argValue(name) {
 const text = argValue('--text') || '你好，这是 dsh-chatty 的语音合成连通性验证。'
 const format = argValue('--format') || 'mp3'
 const endpoint = argValue('--endpoint') || 'https://openspeech.bytedance.com/api/v3/plan/tts/unidirectional'
-const resourceId = argValue('--resource-id') || 'volc.bigtts'
-const voice = argValue('--voice') || 'zh_female_shuangkuaisisi_moon_bigtts'
+const resourceId = argValue('--resource-id') || 'seed-tts-2.0'
+const voice = argValue('--voice') || 'zh_female_shuangkuaisisi_uranus_bigtts'
 
 // ── 1. 读取凭据 ────────────────────────────────────────────────────────
 const home = process.env.DSH_HOME || join(homedir(), '.dsh')
@@ -56,8 +56,8 @@ const res = await fetch(endpoint, {
   signal: controller.signal,
   method: 'POST',
   headers: {
-    'X-Api-App-Key': apiKey,
-    'X-Api-Access-Key': apiKey,
+    // Agent Plan 语音合成 2.0 的鉴权：单一 X-Api-Key（方舟 API Key）。
+    'X-Api-Key': apiKey,
     'X-Api-Resource-Id': resourceId,
     'X-Api-Request-Id': crypto.randomUUID(),
     'content-type': 'application/json',

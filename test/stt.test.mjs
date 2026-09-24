@@ -30,9 +30,9 @@ import { createPseudoStream, pcm16ToWav } from '../lib/stt/pseudo-stream.js'
 
 // ---------------------------------------------------------------- 测试工具
 
+// 火山已收敛到 Agent Plan：单一方舟 API Key；经典账号体系的
+// VOLCANO_SPEECH_APPID / VOLCANO_SPEECH 引用随 volcano-classic 一并删除。
 const KEYS = {
-  'VOLCANO_SPEECH_APPID': 'app-123',
-  'VOLCANO_SPEECH': 'access-456',
   'VOLCENGINE_AGENT_PLAN_API_KEY': 'agent-plan-key',
   'SILICONFLOW_API_KEY': 'sf-key',
 }
@@ -266,8 +266,10 @@ test('直接使用 createVolcanoStt / createSiliconflowStt 时可覆盖 streamUr
   const socket = FakeWebSocket.last()
   assert.ok(socket, '应注入 WebSocketImpl 并建立连接')
   assert.equal(socket.url, 'wss://example.test/plan/asr')
-  assert.equal(socket.options.headers['X-Api-App-Key'], 'agent-plan-key')
-  assert.equal(socket.options.headers['X-Api-Access-Key'], 'agent-plan-key')
+  // Agent Plan 鉴权：单一 X-Api-Key（方舟 API Key），不再有经典双头。
+  assert.equal(socket.options.headers['X-Api-Key'], 'agent-plan-key')
+  assert.equal(socket.options.headers['X-Api-App-Key'], undefined)
+  assert.equal(socket.options.headers['X-Api-Access-Key'], undefined)
   assert.equal(socket.options.headers['X-Api-Resource-Id'], 'volc.custom.asr')
   socket.emit('open')
   const full = decodeClientFrame(socket.sent[0])
@@ -524,12 +526,15 @@ test('火山流式：open → pushAudio → stop 收到 partial 与 final', asyn
   const socket = FakeWebSocket.last()
   assert.ok(socket, '应注入 WebSocketImpl 并建立连接')
   assert.equal(socket.url, STT_DEFAULTS.volcano.streamUrl)
-  // Agent Plan：X-Api-App-Key 与 X-Api-Access-Key 都填同一把方舟 API Key。
-  assert.equal(socket.options.headers['X-Api-App-Key'], 'agent-plan-key')
-  assert.equal(socket.options.headers['X-Api-Access-Key'], 'agent-plan-key')
+  // Agent Plan：单一 X-Api-Key（值 = resolveKey('VOLCENGINE_AGENT_PLAN_API_KEY')），
+  // 不再有 X-Api-App-Key / X-Api-Access-Key / appId。
+  assert.equal(socket.options.headers['X-Api-Key'], 'agent-plan-key')
+  assert.equal(socket.options.headers['X-Api-App-Key'], undefined)
+  assert.equal(socket.options.headers['X-Api-Access-Key'], undefined)
   assert.equal(socket.options.headers['X-Api-Resource-Id'], STT_DEFAULTS.volcano.resourceId)
   assert.equal(socket.options.headers['X-Api-Sequence'], '-1')
   assert.ok(socket.options.headers['X-Api-Request-Id'])
+  assert.ok(socket.options.headers['X-Api-Connect-Id'])
 
   socket.emit('open')
   assert.equal(stream.state, 'open')
