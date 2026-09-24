@@ -16,6 +16,7 @@
 
 ### Changed
 
+- **听写直写：composer 即草稿（UI/架构简化）**。识别出的最终文本不再进入插件的独立「语音草稿面板」，而是**直接追加写入 Session 输入框**（保留已打内容，换行衔接），用户在输入框里编辑、确认、按发送。配套变更：dock 草稿面板收缩为**监听状态小条**（状态 + 音量柱 + 实时预览 + 计时 + 撤销/润色/停止聆听），无 textarea；「撤销最后一段」改为按**插入历史**在输入框内回退（手改过的段落自动跳过），「清空」= 回退全部语音段落；发送直接走 composer 自带提交；「润色」对输入框全文生效；**指令判定移到客户端**（`lib/command-parser.js` 与 `lib/composer-text.js` 由构建脚本内联进 bundle，两端共享同一实现）；宿主 `/dsh-chatty/draft` 路由仅保留 `polish`（add/edit/undo/clear/command 返回 410 deprecated），`lib/draft.js` 领域模型保留供未来复用。
 - **Provider 精简为两个（STT/TTS 均为 Agent Plan + 硅基流动）**：删除「火山经典（App ID + Access Token）」整条链路（STT 批量 recognize/flash、TTS v1 HTTP、`app_id_credential` / `cluster` 配置字段与设置卡输入）。`STT_PROVIDER_KEYS` 回到 `['volcano', 'siliconflow']`，volcano 只保留 plan 鉴权与流式协议。
 - **TTS 的火山 Provider 重写为 Agent Plan 单向流式合成**：`POST /api/v3/tts/unidirectional`（HTTP，`X-Api-App-Key` / `X-Api-Access-Key` 均填方舟 API Key，与 STT 同一把钥匙）；响应按 JSON 行流（`data` base64 音频块）解析，兼容二进制音频载体；删除经典 v1 HTTP 实现与 `tts.app_id_credential` / `tts.cluster` 配置字段，新增 `tts.stream_url` / `tts.resource_id` 端点覆盖。实测该端点对未开通语音授权的账号返回 `45000010 load grant: ... not found in SaaS storage`——`scripts/verify-tts-plan.mjs` 留作开通后的连通验证（成功时音频落盘可直接试听）。
 - **STT 的火山 Provider 细节修正**：流式端点确认为 `plan/sauc/bigmodel_nostream`（`bigmodel` 流式路径实测 404）；`transcribe` 一律内部走流式协议发整段音频（Agent Plan 无批量 HTTP 端点）。

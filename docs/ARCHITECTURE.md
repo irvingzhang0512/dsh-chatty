@@ -289,7 +289,7 @@ export function credentialNameChanged(name) -> boolean  // 归一化后是否与
 |---|---|---|
 | GET | `/dsh-chatty/status` | 配置摘要、Provider capability、凭据状态、UI 需要的字段 |
 | GET | `/dsh-chatty/config-info` | Provider 列表、凭据配置状态、可选 LLM 模型 |
-| GET / POST | `/dsh-chatty/draft` | Voice Draft：GET `?sessionId=` → `{ ok, draft }`；POST `{ sessionId?, action, text?, prompt?, command?, provider?, final? }`（`add` / `edit` / `undo` / `clear` / `cancel` / `polish` / `command` / `get`）→ `{ ok, action, draft, command, effects, removed }`；`draft = { text, size, utterances }`，需可信来源 |
+| GET / POST | `/dsh-chatty/draft` | v0.3 听写直写后仅 `polish` 仍被 UI 使用：POST `{ sessionId?, action: 'polish', text?, prompt? }` → `{ ok, action, draft }`（需可信来源）；`add` / `edit` / `undo` / `clear` / `cancel` / `command` 返回 410 `deprecated`（识别结果由浏览器直接写入 Session 输入框，composer 即草稿）；GET `?sessionId=` 保留兼容 |
 | POST | `/dsh-chatty/stt/transcribe` | `{ dataBase64, mimeType, language?, provider? }` → `{ ok, text, provider, tookMs }` |
 | POST | `/dsh-chatty/stt/stream/start` | `{ language?, sampleRate?, provider? }` → `{ ok, streamId, capability }` |
 | POST | `/dsh-chatty/stt/stream/push` | `{ streamId, seq, dataBase64 }` → `{ ok: true }` |
@@ -312,8 +312,8 @@ export function credentialNameChanged(name) -> boolean  // 归一化后是否与
 - `exports.inject = ['timer', 'slots', 'settingsScope', 'locale', 'uiSession']`。
 - 注册的 slot：
   - `conversation.input.right`：Voice Bar（🎙 长语音 / ⏸ / ➤发送 / 🔊朗读 / ■停止 + 状态 + 可视化）。
-  - `conversation.input.dock`：Voice Draft 面板（草稿文本 + 撤销/清空/润色/发送 + Partial Result）。
+  - `conversation.input.dock`：监听状态小条（状态 + 音量柱 + 实时预览 + 计时 + 撤销/润色/停止聆听）。v0.3 起**识别结果直接写入 Session 输入框（composer 即草稿）**，不再有独立草稿框。
   - `plugins.item`、`plugins.row.config`、`settings.plugin.item`：设置卡（Provider/Credentials/VAD/指令/TTS 渲染策略）。
-- 发送到 Session：`inputActions.setDraft(text)` 后 `inputActions.submit()`；撤销/清空同理只改 composer 草稿，不改历史消息。
+- 发送到 Session：v0.3 听写直写——识别结果经 `lib/composer-text.js` 追加进 composer（`inputActions.setDraft`），用户编辑后按发送（`inputActions.submit()`）；撤销按**插入历史**在 composer 内回退。
 - 状态机：STT `OFF → LISTENING → SPEECH_DETECTED → TRANSCRIBING → LISTENING`（扩展 `PAUSED` / `RECONNECTING` / `ERROR`）；TTS `IDLE → PREPARING → PLAYING → IDLE`（扩展 `INTERRUPTED` / `ERROR`）。
 - TTS 播放期间本地 VAD 继续运行但**不提交远程识别**（需求 §21）；检测到用户真实说话时执行打断：停播 → 清空队列 → 回到 LISTENING。

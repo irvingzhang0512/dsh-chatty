@@ -273,61 +273,33 @@ test('宿主：/credentials/open 首次创建凭据骨架文件（不真的唤�
   }
 })
 
-test('宿主：/draft 的 add / edit / undo / clear 与「整句才是指令」', { skip }, async () => {
+test('宿主：/draft v0.3 听写直写——草稿类 action 已废弃，仅保留 polish', { skip }, async () => {
   const harness = createHarness()
   const post = (body) => call(harness, '/dsh-chatty/draft', { method: 'POST', body })
 
-  let result = await post({ sessionId: 's1', action: 'add', text: '今天我们讨论一下语音插件。' })
-  let body = result.res.json()
-  assert.equal(body.draft.text, '今天我们讨论一下语音插件。')
-  assert.deepEqual(body.effects, ['setDraft'])
-  assert.equal(body.command, null)
+  // 听写直写模式：识别结果由浏览器直接写入输入框，宿主草稿操作全部退役。
+  for (const action of ['add', 'edit', 'undo', 'clear', 'cancel', 'command']) {
+    const { res } = await post({ sessionId: 's1', action, text: '任意' })
+    assert.equal(res.statusCode, 410, `${action} 应返回 410`)
+    assert.equal(res.json().error.code, 'deprecated')
+  }
 
-  // 反例：包含指令词但整句不是指令 → 仍然是正文（需求 §5.2）。
-  result = await post({ sessionId: 's1', action: 'add', text: '这个请求发送以后需要等待服务器响应' })
-  body = result.res.json()
-  assert.equal(body.command, null)
-  assert.equal(body.draft.size, 2)
-
-  // 整句「发送」→ 指令，且不进入草稿。
-  result = await post({ sessionId: 's1', action: 'add', text: '发送' })
-  body = result.res.json()
-  assert.equal(body.command.name, 'send')
-  assert.deepEqual(body.effects, ['submit'])
-  assert.equal(body.draft.size, 2)
-
-  result = await post({ sessionId: 's1', action: 'edit', text: '编辑后的整段' })
-  body = result.res.json()
-  assert.equal(body.draft.text, '编辑后的整段')
-
-  result = await post({ sessionId: 's1', action: 'undo' })
-  body = result.res.json()
-  assert.equal(body.removed, 1)
-  assert.equal(body.draft.text, '')
-
-  await post({ sessionId: 's1', action: 'add', text: '再写一句。' })
-  result = await post({ sessionId: 's1', action: 'clear' })
-  body = result.res.json()
-  assert.equal(body.draft.text, '')
-  assert.equal(body.removed, 1)
+  // GET 仍可读取（兼容旧客户端）。
+  const draftRoute = harness.routes.get('/dsh-chatty/draft')
+  const getReq = makeReq({ url: '/dsh-chatty/draft?sessionId=s1' })
+  const getRes = makeRes()
+  await draftRoute.handler(getReq, getRes)
+  assert.equal(getRes.json().ok, true)
 })
 
-test('宿主：/draft 拒绝空文本与未知 action，且校验来源', { skip }, async () => {
+test('宿主：/draft polish 需要可信来源', { skip }, async () => {
   const harness = createHarness()
-  let { res } = await call(harness, '/dsh-chatty/draft', { method: 'POST', body: { action: 'add', text: '   ' } })
-  assert.equal(res.statusCode, 400)
-  assert.equal(res.json().error.code, 'empty')
-
-  ;({ res } = await call(harness, '/dsh-chatty/draft', { method: 'POST', body: { action: 'nope' } }))
-  assert.equal(res.statusCode, 400)
-  assert.equal(res.json().error.code, 'action')
-
-  ;({ res } = await call(harness, '/dsh-chatty/draft', {
+  const { res } = await call(harness, '/dsh-chatty/draft', {
     method: 'POST',
     remote: '10.1.2.3',
     headers: { origin: 'http://evil.test' },
-    body: { action: 'clear' },
-  }))
+    body: { action: 'polish', text: '你好' },
+  })
   assert.equal(res.statusCode, 403)
 })
 
