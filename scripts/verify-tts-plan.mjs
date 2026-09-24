@@ -25,7 +25,7 @@ function argValue(name) {
 }
 const text = argValue('--text') || '你好，这是 dsh-chatty 的语音合成连通性验证。'
 const format = argValue('--format') || 'mp3'
-const endpoint = argValue('--endpoint') || 'https://openspeech.bytedance.com/api/v3/tts/unidirectional'
+const endpoint = argValue('--endpoint') || 'https://openspeech.bytedance.com/api/v3/plan/tts/unidirectional'
 const resourceId = argValue('--resource-id') || 'volc.bigtts'
 const voice = argValue('--voice') || 'zh_female_shuangkuaisisi_moon_bigtts'
 

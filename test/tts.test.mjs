@@ -186,7 +186,7 @@ test('TTS_PROVIDER_KEYS / TTS_DEFAULTS 形状符合契约', () => {
     credential: 'VOLCENGINE_AGENT_PLAN_API_KEY',
     model: '',
     voice: 'zh_female_shuangkuaisisi_moon_bigtts',
-    baseUrl: 'https://openspeech.bytedance.com/api/v3/tts/unidirectional',
+    baseUrl: 'https://openspeech.bytedance.com/api/v3/plan/tts/unidirectional',
     resourceId: 'volc.bigtts',
     sampleRate: 24000,
     format: 'pcm',
