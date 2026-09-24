@@ -159,16 +159,17 @@ refs:
 
 `lib/tts/providers.js` 的 `TTS_DEFAULTS`，与「插件配置默认值」是两层：
 
-| 字段 | `volcano` | `siliconflow` |
+| 字段 | `volcano`（Agent Plan 合成） | `siliconflow` |
 |---|---|---|
-| `credential` | `VOLCANO_SPEECH` | `SILICONFLOW_API_KEY` |
-| `appIdCredential` | `VOLCANO_SPEECH_APPID` | — |
+| `credential` | `VOLCENGINE_AGENT_PLAN_API_KEY` | `SILICONFLOW_API_KEY` |
 | `model` | `''`（使用默认资源） | `FunAudioLLM/CosyVoice2-0.5B` |
 | `voice` | `zh_female_shuangkuaisisi_moon_bigtts` | `FunAudioLLM/CosyVoice2-0.5B:alex` |
-| `cluster` | `volcano_tts` | — |
-| `baseUrl` | `https://openspeech.bytedance.com/api/v1/tts` | `https://api.siliconflow.cn/v1` |
+| `baseUrl` | `https://openspeech.bytedance.com/api/v3/tts/unidirectional` | `https://api.siliconflow.cn/v1` |
+| `resourceId` | `volc.bigtts` | — |
 | `sampleRate` | `24000` | `24000` |
 | `format` | `pcm` | `pcm` |
+
+> 火山 volcano TTS 为 **Agent Plan 单向流式合成**（HTTP POST），与 STT 共用同一把方舟 API Key；账号需开通豆包语音授权（`scripts/verify-tts-plan.mjs` 验证）。
 
 > 静态音色表见 `lib/tts/providers.js` 的 `STATIC_VOICES`；`GET /dsh-chatty/tts/voices` 查询失败时回落到它。
 

@@ -10,14 +10,17 @@
 - **peer 依赖落地脚本** `scripts/link-peer-deps.mjs`（`npm run link:peers`）：把 `peerDependencies` 从本机 DSH 宿主安装链接到 `node_modules/@deepseek-ai/`，`--check` 可做装前自检。原因：DSH 从 profile 加载插件时 Node 按 realpath 解析符号链接，插件必须能**从自己目录**解析到 `@deepseek-ai/*`，而 profile 的 `node_modules` 通常不提供这批包；链接到宿主那一份可保证与宿主加载的是同一个模块实例。
 - **凭据体验**：新路由 `GET /dsh-chatty/credentials/state`（每把 Key 的配置状态 + 凭据文件路径）与 `POST /dsh-chatty/credentials/open`（用系统编辑器打开凭据文件，首次自动生成 `refs: {}` 骨架，测试可用 `DSH_CHATTY_SKIP_OPEN=1` 跳过唤起）；设置卡顶部固定凭据区（✓/✗ 状态、打开文件、重新检查、可复制片段）。
 - **设置卡子页签**：展开后分为「语音输入 / 语音输出 / 指令与草稿 / 界面 / 高级」五个页签，一次只渲染一屏；provider、模型、语言、音频格式、指令模式、可视化全部改为下拉（模型下拉数据来自 `/config-info` 的 per-provider `models`），音色用 `datalist`（静态音色 ∩ 当前 provider，允许自定义 ID）。
-- **Agent Plan 连通验证脚本** `scripts/verify-volcano-plan.mjs`：用凭据文件里的 `VOLCENGINE_AGENT_PLAN_API_KEY` 连 plan 端点做最小识别会话，支持 `--auth dual/bearer/bearer+dual/appkey-only`、`--url`、`--seconds`。
+- **Agent Plan 连通验证脚本**：`scripts/verify-volcano-plan.mjs`（STT，支持 `--auth dual/bearer/bearer+dual/appkey-only`、`--url`、`--seconds`）与 `scripts/verify-tts-plan.mjs`（TTS，`--text/--format/--voice/--endpoint/--resource-id`，成功时音频落盘可直接试听）。
+- **设置卡试用功能**：语音输入页签「试一下」——录 3.5 秒并按当前 provider 识别，显示识别结果与耗时；语音输出页签「试听」——按当前 provider 合成一句固定文案并播放。
 - **ws-client 握手失败诊断**：握手被 HTTP 4xx/5xx 拒绝时把响应体带进错误信息（火山返回 JSON 错误原因），并销毁响应避免进程挂起。
 
 ### Changed
 
-- **STT Provider 拆分为三个**：`volcano`（Agent Plan，单把方舟 API Key 两用，流式端点 `wss://openspeech.bytedance.com/api/v3/plan/sauc/bigmodel_nostream`，默认模型 doubao-seed-asr-2.0，无批量 HTTP 端点时 transcribe 内部走流式协议）、`volcano-classic`（App ID + Access Token，批量 recognize/flash + 流式 sauc/bigmodel，高级场景保留）、`siliconflow`。`/stt/transcribe` 与 `transcribe_audio` 返回的 provider 名跟随装配 key（`volcano` / `volcano-classic`）。
-- **默认 provider 对齐真实凭据**：`stt.provider` / `tts.provider` 默认 `siliconflow`，`stt.credential` 默认 `SILICONFLOW_API_KEY`、`tts.credential` 默认 `SILICONFLOW_API_KEY`（凭据文件里的常用名）；设置卡切换 provider 时凭据名、模型自动跟随该 provider 默认值。
-- **Agent Plan 语音识别暂为实验性**：实测 plan 端点对该 API Key 返回 `401 {"error":"load grant: ... not found in SaaS storage"}`（账号侧缺少豆包语音授权，需在火山控制台开通语音模型）；开通后运行 `node scripts/verify-volcano-plan.mjs` 验证即可转正。
+- **Provider 精简为两个（STT/TTS 均为 Agent Plan + 硅基流动）**：删除「火山经典（App ID + Access Token）」整条链路（STT 批量 recognize/flash、TTS v1 HTTP、`app_id_credential` / `cluster` 配置字段与设置卡输入）。`STT_PROVIDER_KEYS` 回到 `['volcano', 'siliconflow']`，volcano 只保留 plan 鉴权与流式协议。
+- **TTS 的火山 Provider 重写为 Agent Plan 单向流式合成**：`POST /api/v3/tts/unidirectional`（HTTP，`X-Api-App-Key` / `X-Api-Access-Key` 均填方舟 API Key，与 STT 同一把钥匙）；响应按 JSON 行流（`data` base64 音频块）解析，兼容二进制音频载体；删除经典 v1 HTTP 实现与 `tts.app_id_credential` / `tts.cluster` 配置字段，新增 `tts.stream_url` / `tts.resource_id` 端点覆盖。实测该端点对未开通语音授权的账号返回 `45000010 load grant: ... not found in SaaS storage`——`scripts/verify-tts-plan.mjs` 留作开通后的连通验证（成功时音频落盘可直接试听）。
+- **STT 的火山 Provider 细节修正**：流式端点确认为 `plan/sauc/bigmodel_nostream`（`bigmodel` 流式路径实测 404）；`transcribe` 一律内部走流式协议发整段音频（Agent Plan 无批量 HTTP 端点）。
+- **默认 provider 对齐真实凭据**：`stt.provider` / `tts.provider` 默认 `siliconflow`，`stt.credential` / `tts.credential` 默认 `SILICONFLOW_API_KEY`（凭据文件里的常用名）；设置卡切换 provider 时凭据名、模型自动跟随该 provider 默认值。
+- **Agent Plan 语音识别/合成为实验性**：实测端点对该 API Key 返回 `401/45000010 {"error":"load grant: ... not found in SaaS storage"}`（账号侧缺少豆包语音授权，需在火山控制台开通语音模型）；开通后分别运行 `node scripts/verify-volcano-plan.mjs` 与 `node scripts/verify-tts-plan.mjs` 验证即可转正。
 
 ### Fixed
 

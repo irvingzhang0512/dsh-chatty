@@ -201,7 +201,9 @@ export function createSttProvider(name, options = {}) -> provider
 ```js
 export const TTS_PROVIDER_KEYS = ['volcano', 'siliconflow']
 export const TTS_DEFAULTS = {
-  volcano:     { credential: 'VOLCANO_SPEECH', appIdCredential: 'VOLCANO_SPEECH_APPID', model: '', voice: 'zh_female_shuangkuaisisi_moon_bigtts', cluster: 'volcano_tts', baseUrl: 'https://openspeech.bytedance.com/api/v1/tts', sampleRate: 24000, format: 'pcm' },
+  // 火山 = Agent Plan 单向流式合成（HTTP POST unidirectional），
+  // 鉴权与 STT 共用同一把方舟 API Key。【实验性：账号需开通豆包语音授权】
+  volcano:     { credential: 'VOLCENGINE_AGENT_PLAN_API_KEY', model: '', voice: 'zh_female_shuangkuaisisi_moon_bigtts', baseUrl: 'https://openspeech.bytedance.com/api/v3/tts/unidirectional', resourceId: 'volc.bigtts', sampleRate: 24000, format: 'pcm' },
   siliconflow: { credential: 'SILICONFLOW_API_KEY', model: 'FunAudioLLM/CosyVoice2-0.5B', voice: 'FunAudioLLM/CosyVoice2-0.5B:alex', baseUrl: 'https://api.siliconflow.cn/v1', sampleRate: 24000, format: 'pcm' },
 }
 export const STATIC_VOICES            // [{ provider, id, label }]

@@ -1,9 +1,9 @@
 // STT Provider 单元测试（node:test + node:assert/strict）。
 //
 // 全部离线：网络用假 fetchImpl，WebSocket 用假 WebSocketImpl，凭据用假 resolveKey。
-// 覆盖范围：providers 契约形状 / 缺凭据 / 火山经典批量请求与文本解析（volcano-classic）/
-// 火山 Agent Plan 流式转录（volcano）/ 硅基流动 multipart / 伪流式分段与 final 与过期丢弃 /
-// 火山二进制帧编解码与流式状态迁移。
+// 覆盖范围：providers 契约形状 / 缺凭据 / 火山 Agent Plan 流式（volcano：流式会话与
+// 复用流式会话的 transcribe，没有批量 HTTP）/ 硅基流动 multipart / 伪流式分段与 final
+// 与过期丢弃 / 火山二进制帧编解码与流式状态迁移。
 
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -174,7 +174,8 @@ function serverErrorFrame(code, message) {
 // ---------------------------------------------------------------- 契约形状
 
 test('STT_PROVIDER_KEYS 与 STT_DEFAULTS 符合契约 §2.6', () => {
-  assert.deepEqual(STT_PROVIDER_KEYS, ['volcano', 'volcano-classic', 'siliconflow'])
+  // volcano-classic 已删除：只有 volcano（Agent Plan）与 siliconflow 两家
+  assert.deepEqual(STT_PROVIDER_KEYS, ['volcano', 'siliconflow'])
 
   // volcano：Agent Plan（一把方舟 API Key 走天下，识别走 plan 流式端点，没有批量 HTTP）
   const volcano = STT_DEFAULTS.volcano
@@ -186,26 +187,15 @@ test('STT_PROVIDER_KEYS 与 STT_DEFAULTS 符合契约 §2.6', () => {
   assert.equal(volcano.resourceId, 'volc.seedasr.sauc.duration')
   assert.equal(volcano.language, 'zh-CN')
 
-  // volcano-classic：经典双钥匙（批量 recognize/flash + 流式 sauc/bigmodel）
-  const classic = STT_DEFAULTS['volcano-classic']
-  assert.equal(classic.authMode, 'classic')
-  assert.equal(classic.credential, 'VOLCANO_SPEECH')
-  assert.equal(classic.appIdCredential, 'VOLCANO_SPEECH_APPID')
-  assert.equal(classic.model, 'volc.bigasr.auc_turbo')
-  assert.equal(classic.baseUrl, 'https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash')
-  assert.equal(classic.streamUrl, 'wss://openspeech.bytedance.com/api/v3/sauc/bigmodel')
-  assert.equal(classic.resourceId, 'volc.bigasr.sauc.duration')
-  assert.equal(classic.batchResourceId, 'volc.bigasr.auc_turbo')
-  assert.equal(classic.language, 'zh-CN')
-
   const siliconflow = STT_DEFAULTS.siliconflow
   assert.equal(siliconflow.credential, 'SILICONFLOW_API_KEY')
   assert.equal(siliconflow.model, 'FunAudioLLM/SenseVoiceSmall')
   assert.equal(siliconflow.baseUrl, 'https://api.siliconflow.cn/v1')
   assert.equal(siliconflow.language, 'zh')
 
-  // 已知模型表：Agent Plan 默认模型打头
+  // 已知模型表：两家各一条，Agent Plan 默认模型打头
   assert.equal(STT_KNOWN_MODELS.volcano[0].id, 'doubao-seed-asr-2.0')
+  assert.equal(STT_KNOWN_MODELS.siliconflow[0].id, 'FunAudioLLM/SenseVoiceSmall')
 })
 
 test('sttCapability 返回契约规定的形状', () => {
@@ -230,9 +220,8 @@ test('sttCapability 返回契约规定的形状', () => {
   volcano.languages.push('xx')
   assert.equal(sttCapability('volcano').languages.includes('xx'), false)
 
-  // 三个 provider key 都有 capability：volcano（plan）与 volcano-classic 共用火山能力声明
+  // 两个 provider key 都有 capability
   assert.deepEqual(sttCapability('volcano'), { ...VOLCANO_STT_CAPABILITY, languages: [...VOLCANO_STT_CAPABILITY.languages] })
-  assert.deepEqual(sttCapability('volcano-classic'), { ...VOLCANO_STT_CAPABILITY, languages: [...VOLCANO_STT_CAPABILITY.languages] })
   assert.deepEqual(sttCapability('siliconflow'), { ...SILICONFLOW_STT_CAPABILITY, languages: [...SILICONFLOW_STT_CAPABILITY.languages] })
 })
 
@@ -240,6 +229,9 @@ test('未知 Provider 抛错', () => {
   assert.throws(() => sttCapability('nope'), (error) => error.code === 'provider' && /未知的 STT Provider/.test(error.message))
   assert.throws(() => createSttProvider('nope'), (error) => error.code === 'provider')
   assert.throws(() => createSttProvider(''), (error) => error.code === 'provider')
+  // volcano-classic 已随经典批量 HTTP 一并删除，不再是被支持的 provider
+  assert.throws(() => sttCapability('volcano-classic'), (error) => error.code === 'provider')
+  assert.throws(() => createSttProvider('volcano-classic'), (error) => error.code === 'provider')
 })
 
 test('createSttProvider 返回 provider 契约形状', () => {
@@ -249,36 +241,40 @@ test('createSttProvider 返回 provider 契约形状', () => {
   assert.equal(typeof provider.createStream, 'function')
   assert.deepEqual(provider.capability, sttCapability('volcano'))
 
-  const classic = createSttProvider('volcano-classic', { resolveKey, fetchImpl: fakeFetch(() => jsonResponse({})) })
-  assert.deepEqual(classic.capability, sttCapability('volcano-classic'))
-
   const sf = createSttProvider('siliconflow', { resolveKey, fetchImpl: fakeFetch(() => jsonResponse({})) })
   assert.equal(sf.name, 'siliconflow')
   assert.deepEqual(sf.capability, sttCapability('siliconflow'))
 })
 
-test('直接使用 createVolcanoStt / createSiliconflowStt 时可覆盖 baseUrl 与 model', async () => {
-  const volcanoFetch = fakeFetch(() => jsonResponse(
-    { result: { text: 'ok' } },
-    { headers: { 'x-api-status-code': '20000000' } },
-  ))
+test('直接使用 createVolcanoStt / createSiliconflowStt 时可覆盖 streamUrl / resourceId / model', async () => {
+  // volcano（Agent Plan）：覆盖流式端点、resourceId 与模型，经假 WS 验证
+  FakeWebSocket.reset()
   const volcano = createVolcanoStt({
     config: {
-      authMode: 'classic',
-      credential: 'VOLCANO_SPEECH',
-      appIdCredential: 'VOLCANO_SPEECH_APPID',
-      baseUrl: 'https://example.test/flash',
-      batchResourceId: 'volc.custom',
-      model: 'volc.custom',
+      credential: 'VOLCENGINE_AGENT_PLAN_API_KEY',
+      streamUrl: 'wss://example.test/plan/asr',
+      resourceId: 'volc.custom.asr',
+      model: 'doubao-seed-asr-custom',
+      sampleRate: 8000,
     },
     resolveKey,
-    fetchImpl: volcanoFetch,
+    WebSocketImpl: FakeWebSocket,
   })
   assert.equal(volcano.name, 'volcano')
-  await volcano.transcribe({ audio: new Uint8Array([1]), mimeType: 'audio/wav' })
-  assert.equal(volcanoFetch.calls[0].url, 'https://example.test/flash')
-  assert.equal(volcanoFetch.calls[0].init.headers['X-Api-Resource-Id'], 'volc.custom')
-  assert.equal(JSON.parse(volcanoFetch.calls[0].init.body).request.model_name, 'volc.custom')
+  const stream = volcano.createStream({})
+  await tick()
+  const socket = FakeWebSocket.last()
+  assert.ok(socket, '应注入 WebSocketImpl 并建立连接')
+  assert.equal(socket.url, 'wss://example.test/plan/asr')
+  assert.equal(socket.options.headers['X-Api-App-Key'], 'agent-plan-key')
+  assert.equal(socket.options.headers['X-Api-Access-Key'], 'agent-plan-key')
+  assert.equal(socket.options.headers['X-Api-Resource-Id'], 'volc.custom.asr')
+  socket.emit('open')
+  const full = decodeClientFrame(socket.sent[0])
+  assert.equal(full.type, VOLCANO_MESSAGE_TYPE.FULL_CLIENT_REQUEST)
+  assert.equal(full.json.request.model_name, 'doubao-seed-asr-custom')
+  assert.equal(full.json.audio.rate, 8000)
+  stream.cancel()
 
   const sfFetch = fakeFetch(() => jsonResponse({ text: 'ok' }))
   const siliconflow = createSiliconflowStt({
@@ -314,9 +310,10 @@ test('config 支持扁平传入，也支持整个插件配置（取 stt 段）',
 
 // ---------------------------------------------------------------- 缺凭据
 
-test('火山经典批量：缺少双钥匙凭据抛 code=credential', async () => {
-  const provider = createSttProvider('volcano-classic', {
+test('火山 plan：缺少 Agent Plan API Key 抛 code=credential', async () => {
+  const provider = createSttProvider('volcano', {
     resolveKey: resolveNoKey,
+    WebSocketImpl: FakeWebSocket,
     fetchImpl: fakeFetch(() => jsonResponse({ result: { text: '不应被调用' } })),
   })
   await assert.rejects(
@@ -324,21 +321,9 @@ test('火山经典批量：缺少双钥匙凭据抛 code=credential', async () =
     (error) => {
       assert.equal(error.code, 'credential')
       assert.match(error.message, /volcano credential not configured/)
-      assert.match(error.message, /VOLCANO_SPEECH_APPID/)
-      assert.match(error.message, /VOLCANO_SPEECH/)
+      assert.match(error.message, /VOLCENGINE_AGENT_PLAN_API_KEY/)
       return true
     },
-  )
-})
-
-test('火山经典批量：只缺 appId 也抛 code=credential', async () => {
-  const provider = createSttProvider('volcano-classic', {
-    resolveKey: async (name) => (name === 'VOLCANO_SPEECH' ? 'access-only' : ''),
-    fetchImpl: fakeFetch(() => jsonResponse({ result: { text: '不应被调用' } })),
-  })
-  await assert.rejects(
-    () => provider.transcribe({ audio: new Uint8Array([1]), mimeType: 'audio/wav' }),
-    (error) => error.code === 'credential' && /VOLCANO_SPEECH_APPID/.test(error.message),
   )
 })
 
@@ -351,95 +336,6 @@ test('硅基流动批量：缺少凭据抛 code=credential', async () => {
     () => provider.transcribe({ audio: new Uint8Array([1, 2]), mimeType: 'audio/wav' }),
     (error) => error.code === 'credential' && /siliconflow credential not configured/.test(error.message),
   )
-})
-
-// ---------------------------------------------------------------- 火山经典批量（volcano-classic）
-
-test('火山经典批量：请求头/请求体与 result.text 解析', async () => {
-  const audio = new Uint8Array([0x52, 0x49, 0x46, 0x46, 0x00, 0x01])
-  const fetchImpl = fakeFetch(() => jsonResponse(
-    { result: { text: ' 你好世界 ' } },
-    { headers: { 'x-api-status-code': '20000000' } },
-  ))
-  const provider = createSttProvider('volcano-classic', { resolveKey, fetchImpl })
-
-  const result = await provider.transcribe({ audio, mimeType: 'audio/wav', language: 'zh-CN' })
-
-  assert.equal(fetchImpl.calls.length, 1)
-  const call = fetchImpl.calls[0]
-  assert.equal(call.url, STT_DEFAULTS['volcano-classic'].baseUrl)
-  assert.equal(call.init.method, 'POST')
-  assert.equal(call.init.headers['content-type'], 'application/json')
-  assert.equal(call.init.headers['X-Api-App-Key'], 'app-123')
-  assert.equal(call.init.headers['X-Api-Access-Key'], 'access-456')
-  assert.equal(call.init.headers['X-Api-Resource-Id'], STT_DEFAULTS['volcano-classic'].batchResourceId)
-  assert.equal(call.init.headers['X-Api-Sequence'], '-1')
-  assert.match(call.init.headers['X-Api-Request-Id'], /^[0-9a-f-]{36}$/)
-
-  const body = JSON.parse(call.init.body)
-  assert.equal(body.user.uid, VOLCANO_DEFAULT_UID)
-  assert.equal(body.audio.format, 'wav')
-  assert.equal(body.audio.data, Buffer.from(audio).toString('base64'))
-  assert.equal(body.request.model_name, STT_DEFAULTS['volcano-classic'].model)
-  assert.equal(body.request.enable_itn, true)
-  assert.equal(body.request.show_utterances, true)
-
-  assert.equal(result.text, '你好世界')
-  assert.equal(result.provider, 'volcano-classic')
-  assert.equal(typeof result.tookMs, 'number')
-  assert.equal(result.segments, undefined)
-})
-
-test('火山经典批量：PCM 输入补 rate/bits/channel，响应非 20000000 抛错', async () => {
-  const fetchImpl = fakeFetch(() => jsonResponse(
-    { message: 'invalid audio' },
-    { ok: false, status: 400, headers: { 'x-api-status-code': '45000001', 'x-api-message': '参数错误' } },
-  ))
-  const provider = createSttProvider('volcano-classic', { resolveKey, fetchImpl })
-
-  await assert.rejects(
-    () => provider.transcribe({ audio: new Uint8Array([1, 2, 3]), mimeType: 'audio/pcm' }),
-    (error) => {
-      assert.equal(error.code, '45000001')
-      assert.match(error.message, /参数错误/)
-      return true
-    },
-  )
-
-  const body = JSON.parse(fetchImpl.calls[0].init.body)
-  assert.equal(body.audio.format, 'pcm')
-  assert.equal(body.audio.rate, 16000)
-  assert.equal(body.audio.bits, 16)
-  assert.equal(body.audio.channel, 1)
-  assert.equal(body.audio.codec, 'raw')
-})
-
-test('火山经典批量：result.utterances 拼接为文本并给出 segments', async () => {
-  const fetchImpl = fakeFetch(() => jsonResponse(
-    {
-      result: {
-        utterances: [
-          { text: '你好，', start_time: 0, end_time: 480 },
-          { text: '世界。', start_time: 480, end_time: 1200 },
-        ],
-      },
-    },
-    { headers: { 'x-api-status-code': '20000000' } },
-  ))
-  const provider = createSttProvider('volcano-classic', { resolveKey, fetchImpl })
-
-  const result = await provider.transcribe({ audio: new Uint8Array([1]), mimeType: 'audio/wav' })
-  assert.equal(result.text, '你好，世界。')
-  assert.equal(result.segments.length, 2)
-  assert.deepEqual(result.segments[0], { text: '你好，', startMs: 0, endMs: 480 })
-  assert.deepEqual(result.segments[1], { text: '世界。', startMs: 480, endMs: 1200 })
-})
-
-test('extractVolcanoResult：result.text 优先，其次 utterances，再次顶层 text', () => {
-  assert.equal(extractVolcanoResult({ result: { text: 'A', utterances: [{ text: 'B' }] } }).text, 'A')
-  assert.equal(extractVolcanoResult({ result: { utterances: [{ text: 'B' }, { text: 'C' }] } }).text, 'BC')
-  assert.equal(extractVolcanoResult({ text: 'D' }).text, 'D')
-  assert.deepEqual(extractVolcanoResult(null), { text: '', segments: [] })
 })
 
 // ---------------------------------------------------------------- 硅基流动批量
@@ -495,7 +391,7 @@ test('硅基流动批量：HTTP 失败抛错并带服务端消息', async () => 
 // ---------------------------------------------------------------- 火山协议帧
 
 test('火山协议：full client request 帧编码（gzip + JSON + sequence=1）', () => {
-  const frame = buildFullClientRequest({ language: 'zh-CN', sampleRate: 16000, model: 'volc.bigasr.sauc.duration' })
+  const frame = buildFullClientRequest({ language: 'zh-CN', sampleRate: 16000, model: 'doubao-seed-asr-2.0' })
   const decoded = decodeClientFrame(frame)
 
   assert.equal(decoded.type, VOLCANO_MESSAGE_TYPE.FULL_CLIENT_REQUEST)
@@ -509,7 +405,7 @@ test('火山协议：full client request 帧编码（gzip + JSON + sequence=1）
   assert.equal(decoded.json.audio.bits, 16)
   assert.equal(decoded.json.audio.channel, 1)
   assert.equal(decoded.json.audio.language, undefined) // 中文不传 language
-  assert.equal(decoded.json.request.model_name, 'volc.bigasr.sauc.duration')
+  assert.equal(decoded.json.request.model_name, 'doubao-seed-asr-2.0')
   assert.equal(decoded.json.request.show_utterances, true)
 
   const english = decodeClientFrame(buildFullClientRequest({ language: 'en-US', sampleRate: 16000 }))
@@ -591,7 +487,14 @@ test('火山协议：server ack 与 server error 帧解析', () => {
   assert.throws(() => parseServerResponse(new Uint8Array([0x11])), /不完整/)
 })
 
-// ---------------------------------------------------------------- 火山流式
+test('extractVolcanoResult：result.text 优先，其次 utterances，再次顶层 text', () => {
+  assert.equal(extractVolcanoResult({ result: { text: 'A', utterances: [{ text: 'B' }] } }).text, 'A')
+  assert.equal(extractVolcanoResult({ result: { utterances: [{ text: 'B' }, { text: 'C' }] } }).text, 'BC')
+  assert.equal(extractVolcanoResult({ text: 'D' }).text, 'D')
+  assert.deepEqual(extractVolcanoResult(null), { text: '', segments: [] })
+})
+
+// ---------------------------------------------------------------- 火山流式（Agent Plan）
 
 test('火山流式：open → pushAudio → stop 收到 partial 与 final', async () => {
   FakeWebSocket.reset()
@@ -762,6 +665,34 @@ test('火山流式：signal 中止等价于 cancel', async () => {
   controller.abort()
   assert.equal(stream.closed, true)
   await stream.stop()
+})
+
+test('火山 plan：transcribe 复用流式会话（不发 HTTP，经假 WS 等 final）', async () => {
+  FakeWebSocket.reset()
+  const fetchImpl = fakeFetch(() => jsonResponse({ result: { text: '不应走 HTTP' } }))
+  const provider = createSttProvider('volcano', { resolveKey, fetchImpl, WebSocketImpl: FakeWebSocket })
+
+  const pending = provider.transcribe({ audio: new Uint8Array([1, 2, 3, 4]), mimeType: 'audio/wav' })
+  await tick()
+
+  const socket = FakeWebSocket.last()
+  assert.ok(socket, 'plan 模式 transcribe 应经流式 WS 会话完成')
+  assert.equal(socket.url, STT_DEFAULTS.volcano.streamUrl)
+  socket.emit('open')
+
+  // 应发出 full client request 与（含 LAST 标志的）音频帧，全程不发 HTTP
+  const sentFrames = socket.sent.map((frame) => decodeClientFrame(frame))
+  assert.ok(sentFrames.some((frame) => frame.type === VOLCANO_MESSAGE_TYPE.FULL_CLIENT_REQUEST))
+  assert.ok(sentFrames.some((frame) => frame.flags & VOLCANO_FRAME_FLAG.LAST), 'stop 应补发最后一帧')
+
+  socket.emit('message', serverResponseFrame({ result: { text: '整段识别结果' } }, { sequence: 2, last: true }))
+  const result = await pending
+
+  assert.equal(result.text, '整段识别结果')
+  assert.equal(result.provider, 'volcano')
+  assert.equal(typeof result.tookMs, 'number')
+  assert.equal(fetchImpl.calls.length, 0) // Agent Plan 没有批量 HTTP 端点
+  assert.equal(socket.closed, true)
 })
 
 // ---------------------------------------------------------------- 伪流式

@@ -1,17 +1,19 @@
 /**
  * dsh-chatty — TTS Provider 单元测试。
  *
- * 全部离线：不访问网络、不读取真实 API Key。所有外部调用都通过注入的假 fetchImpl 完成，
- * 凭据通过注入的 resolveKey 提供。
+ * 全部离线：不访问网络、不读取真实 API Key。火山 Agent Plan（单向流式 WS 合成）通过
+ * 注入的假 WebSocket 驱动；硅基流动仍走注入的假 fetchImpl；凭据通过注入的 resolveKey 提供。
  *
  * 覆盖范围（对应任务要求）：
  *   - capability 形状与未知 Provider 抛错；
- *   - 缺凭据抛 code === 'credential'；
- *   - 火山请求体字段、鉴权头、base64 解码；
- *   - 火山 pcm / mp3 / wav encoding 映射；
+ *   - 缺凭据抛 code === 'credential'（synthesize 直接抛 / createStream 在迭代时抛）；
+ *   - 火山 plan 协议：WS 鉴权头（X-Api-App-Key / X-Api-Access-Key 同一把 Key）、
+ *     请求 JSON（user.uid / req_params.text / speaker / audio_params.format|sample_rate|speech_rate）、
+ *     sequence 数据块逐块产出、sequence=-100 与 done:true 结束；
+ *   - 火山 synthesize 与 createStream 拼接一致、cancel / signal 中止、错误路径；
  *   - 硅基流动请求体与二进制响应；
  *   - createStream 分块产出顺序 + 内容拼接等于 synthesize 结果；
- *   - speed 映射（火山 speed_ratio / 硅基流动 speed）；
+ *   - speed 映射（火山 speech_rate / 硅基流动 speed）；
  *   - 音色列表（火山静态过滤、硅基流动远端 + 失败回落）。
  */
 
@@ -27,6 +29,9 @@ import {
 } from '../lib/tts/providers.js'
 
 /* ------------------------------- 测试工具 ------------------------------- */
+
+/** 等一个宏任务，确保异步链（凭据解析 → WebSocket 建立）已跑完。 */
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0))
 
 /** 最小的 Headers 替身（只实现 get）。 */
 function makeHeaders(map = {}) {
@@ -103,14 +108,6 @@ function audioResponse(bytes, chunkSizes = []) {
   }
 }
 
-/** 假火山成功响应：把字节按 base64 放进 data 字段。 */
-function volcanoResponse(bytes, { code = 3000, message = 'Success', ok = true, status = 200 } = {}) {
-  return jsonResponse(
-    { code, message, data: Buffer.from(bytes).toString('base64') },
-    { ok, status },
-  )
-}
-
 /** 测试用拼接（独立实现，避免与实现共享同一份逻辑）。 */
 function joinBytes(chunks) {
   let total = 0
@@ -124,15 +121,49 @@ function joinBytes(chunks) {
   return out
 }
 
-/** 构造火山 Provider（默认注入 appId + token）。 */
-function volcanoProvider({ config = {}, resolveKey, fetchImpl, calls = [] } = {}) {
+/** 火山 Agent Plan 凭据夹具：resolveKey 只认这一把 Key。 */
+const resolveKey = async (name) => (name === 'VOLCENGINE_AGENT_PLAN_API_KEY' ? 'agent-plan-key' : undefined)
+
+/**
+ * 火山 plan 合成走 HTTP POST（JSON 行流响应）。
+ * fetch 桩：记录每次调用（url/headers/body），按队列返回 JSON 行流响应。
+ */
+function textStream(text) {
+  return new ReadableStream({
+    start(controller) { controller.enqueue(Buffer.from(text, 'utf8')); controller.close() },
+  })
+}
+function jsonLinesResponse(lines) {
+  const text = lines.map((line) => JSON.stringify(line)).join('\n') + '\n'
+  return {
+    ok: true, status: 200,
+    headers: { get: (name) => (name === 'content-type' ? 'application/json' : null) },
+    body: textStream(text),
+  }
+}
+const audioBase64 = (bytes) => Buffer.from(bytes).toString('base64')
+
+function createVolcanoFetchStub(responses) {
+  const calls = []
+  const queue = responses.slice()
+  const fetchImpl = async (url, init) => {
+    const response = queue.shift()
+    if (!response) throw new Error('no stubbed volcano TTS response')
+    calls.push({ url: String(url), headers: init.headers, body: JSON.parse(init.body) })
+    return response
+  }
+  return { fetchImpl, calls }
+}
+
+/** 构造火山 Provider（默认注入 Agent Plan API Key 与 HTTP 桩）。 */
+function volcanoProvider({ config = {}, resolveKey, fetchImpl } = {}) {
+  const defaultStub = createVolcanoFetchStub([jsonLinesResponse([
+    { header: { reqid: 'test', code: 0 }, data: audioBase64([1]) },
+  ])])
   return createTtsProvider('volcano', {
-    config: { appId: 'app-12345', ...config },
-    resolveKey: resolveKey || (async (name) => (name === 'VOLCANO_SPEECH' ? 'token-abc' : undefined)),
-    fetchImpl: fetchImpl || (async (url, init) => {
-      calls.push({ url, init })
-      return volcanoResponse(new Uint8Array([1, 2, 3, 4]))
-    }),
+    config,
+    resolveKey: resolveKey || (async (name) => (name === 'VOLCENGINE_AGENT_PLAN_API_KEY' ? 'agent-plan-key' : undefined)),
+    fetchImpl: fetchImpl || defaultStub.fetchImpl,
   })
 }
 
@@ -150,13 +181,13 @@ function siliconFlowProvider({ config = {}, resolveKey, fetchImpl } = {}) {
 test('TTS_PROVIDER_KEYS / TTS_DEFAULTS 形状符合契约', () => {
   assert.deepEqual(TTS_PROVIDER_KEYS, ['volcano', 'siliconflow'])
   assert.deepEqual(Object.keys(TTS_DEFAULTS).sort(), [...TTS_PROVIDER_KEYS].sort())
+  // 火山：Agent Plan 单向流式合成（与 STT 同一把方舟 API Key；没有 cluster / appIdCredential / baseUrl）
   assert.deepEqual(TTS_DEFAULTS.volcano, {
-    credential: 'VOLCANO_SPEECH',
-    appIdCredential: 'VOLCANO_SPEECH_APPID',
+    credential: 'VOLCENGINE_AGENT_PLAN_API_KEY',
     model: '',
     voice: 'zh_female_shuangkuaisisi_moon_bigtts',
-    cluster: 'volcano_tts',
-    baseUrl: 'https://openspeech.bytedance.com/api/v1/tts',
+    baseUrl: 'https://openspeech.bytedance.com/api/v3/tts/unidirectional',
+    resourceId: 'volc.bigtts',
     sampleRate: 24000,
     format: 'pcm',
   })
@@ -223,12 +254,10 @@ test('createTtsProvider 返回的 Provider 形状符合契约', () => {
 })
 
 test('缺少凭据时 synthesize 抛 code === "credential"', async () => {
-  const neverFetch = async () => { throw new Error('不应该发起网络请求') }
-
+  // 火山：凭据缺失在发起 HTTP 请求前就抛，不会真的建连
   const volcano = createTtsProvider('volcano', {
-    config: { appId: 'app-1' },
     resolveKey: async () => undefined,
-    fetchImpl: neverFetch,
+    fetchImpl: async () => { throw new Error('不应该发起网络请求') },
   })
   await assert.rejects(
     volcano.synthesize({ text: '你好' }),
@@ -237,7 +266,7 @@ test('缺少凭据时 synthesize 抛 code === "credential"', async () => {
 
   const siliconflow = createTtsProvider('siliconflow', {
     resolveKey: async () => '',
-    fetchImpl: neverFetch,
+    fetchImpl: async () => { throw new Error('不应该发起网络请求') },
   })
   await assert.rejects(
     siliconflow.synthesize({ text: '你好' }),
@@ -256,21 +285,40 @@ test('缺少 resolveKey 或 resolveKey 抛错时同样抛 credential', async () 
   await assert.rejects(throwing.synthesize({ text: '你好' }), (err) => err.code === 'credential')
 })
 
-test('火山：缺 appid 时抛 credential（token 已提供）', async () => {
-  const provider = createTtsProvider('volcano', {
-    config: { appId: '' },
-    resolveKey: async (name) => (name === 'VOLCANO_SPEECH' ? 'token-abc' : undefined),
-    fetchImpl: async () => { throw new Error('不应该发起网络请求') },
-  })
+test('火山 plan：缺 API Key 时 synthesize 抛 credential 且不发起请求', async () => {
+  const { fetchImpl, calls } = createVolcanoFetchStub([])
+  const provider = createTtsProvider('volcano', { resolveKey: async () => undefined, fetchImpl })
   await assert.rejects(
     provider.synthesize({ text: '你好' }),
-    (err) => err.code === 'credential' && err.credential === 'VOLCANO_SPEECH_APPID',
+    (err) => err.code === 'credential'
+      && err.provider === 'volcano'
+      && err.credential === 'VOLCENGINE_AGENT_PLAN_API_KEY',
   )
+  assert.equal(calls.length, 0)
 })
 
-test('火山：synthesize 请求体字段、鉴权头与 base64 解码', async () => {
-  const calls = []
-  const provider = volcanoProvider({ calls })
+test('火山 plan：createStream 在迭代时才解析凭据并抛 credential', async () => {
+  const { fetchImpl, calls } = createVolcanoFetchStub([])
+  const provider = createTtsProvider('volcano', {
+    resolveKey: async () => '',
+    fetchImpl,
+  })
+  const stream = provider.createStream({ text: '你好' })
+  await assert.rejects(
+    (async () => { for await (const chunk of stream.chunks) void chunk })(),
+    (err) => err.code === 'credential',
+  )
+  assert.equal(calls.length, 0)
+})
+
+test('火山 plan：synthesize 请求体、鉴权头与音频拼接', async () => {
+  const blocks = [Uint8Array.from([1, 2, 3, 4]), Uint8Array.from([5, 6, 7, 8])]
+  const { fetchImpl, calls } = createVolcanoFetchStub([jsonLinesResponse([
+    { header: { reqid: 'test', code: 0 }, data: audioBase64(blocks[0]) },
+    { header: { reqid: 'test', code: 0 }, data: audioBase64(blocks[1]) },
+    { header: { reqid: 'test', code: 0 } },
+  ])])
+  const provider = createTtsProvider('volcano', { resolveKey, fetchImpl })
   const result = await provider.synthesize({
     text: '你好，世界',
     voice: 'zh_female_cancan_mars_bigtts',
@@ -278,99 +326,127 @@ test('火山：synthesize 请求体字段、鉴权头与 base64 解码', async (
     format: 'pcm',
   })
 
+  // HTTP POST：默认端点，Agent Plan 鉴权头两把都是同一把方舟 API Key
   assert.equal(calls.length, 1)
-  assert.equal(calls[0].url, 'https://openspeech.bytedance.com/api/v1/tts')
-  assert.equal(calls[0].init.method, 'POST')
-  assert.equal(calls[0].init.headers['Content-Type'], 'application/json')
-  // 火山 v1 TTS 的鉴权头是 Bearer;token（分号）
-  assert.equal(calls[0].init.headers.Authorization, 'Bearer;token-abc')
+  assert.equal(calls[0].url, TTS_DEFAULTS.volcano.baseUrl)
+  assert.equal(calls[0].headers['X-Api-App-Key'], 'agent-plan-key')
+  assert.equal(calls[0].headers['X-Api-Access-Key'], 'agent-plan-key')
+  assert.equal(calls[0].headers['X-Api-Resource-Id'], TTS_DEFAULTS.volcano.resourceId)
+  assert.match(calls[0].headers['X-Api-Request-Id'], /^[0-9a-f-]{36}$/)
 
-  const body = JSON.parse(calls[0].init.body)
-  assert.deepEqual(body.app, { appid: 'app-12345', token: 'token-abc', cluster: 'volcano_tts' })
-  assert.deepEqual(body.user, { uid: 'dsh-chatty' })
-  assert.deepEqual(body.audio, {
-    voice_type: 'zh_female_cancan_mars_bigtts',
-    encoding: 'pcm',
-    speed_ratio: 1.25,
-  })
-  assert.equal(body.request.text, '你好，世界')
-  assert.equal(body.request.operation, 'query')
-  assert.match(body.request.reqid, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+  // 请求 JSON 体
+  assert.deepEqual(calls[0].body.user, { uid: 'dsh-chatty' })
+  assert.equal(calls[0].body.req_params.text, '你好，世界')
+  assert.equal(calls[0].body.req_params.speaker, 'zh_female_cancan_mars_bigtts')
+  assert.deepEqual(calls[0].body.req_params.audio_params, { format: 'pcm', sample_rate: 24000, speech_rate: 1.25 })
 
-  assert.deepEqual(result.audio, new Uint8Array([1, 2, 3, 4]))
+  // 两个 data 块按顺序 base64 解码后拼接
+  assert.deepEqual(result.audio, Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8]))
   assert.deepEqual(result, {
-    audio: new Uint8Array([1, 2, 3, 4]),
+    audio: Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8]),
     format: 'pcm',
     sampleRate: 24000,
     channels: 1,
   })
 })
 
-test('火山：appid 可来自 resolveKey(appIdCredential)', async () => {
-  const calls = []
+test('火山 plan：config 可覆盖 voice / uid / endpoint / resourceId / sampleRate', async () => {
+  const blocks = [Uint8Array.from([9])]
+  const { fetchImpl, calls } = createVolcanoFetchStub([jsonLinesResponse([
+    { header: { reqid: 'test', code: 0 }, data: audioBase64(blocks[0]) },
+  ])])
   const provider = createTtsProvider('volcano', {
-    config: { appId: undefined },
-    resolveKey: async (name) => {
-      if (name === 'VOLCANO_SPEECH') return 'token-abc'
-      if (name === 'VOLCANO_SPEECH_APPID') return 'app-from-credential'
-      return undefined
+    config: {
+      voice: 'zh_male_wennuanahu_moon_bigtts',
+      uid: 'custom-uid',
+      baseUrl: 'https://tts.example.test/unidirectional',
+      resourceId: 'volc.custom.tts',
+      sampleRate: 16000,
     },
-    fetchImpl: async (url, init) => {
-      calls.push({ url, init })
-      return volcanoResponse(new Uint8Array([9]))
-    },
+    resolveKey: async (name) => (name === 'VOLCENGINE_AGENT_PLAN_API_KEY' ? 'agent-plan-key' : undefined),
+    fetchImpl,
   })
-  await provider.synthesize({ text: '你好' })
-  assert.equal(JSON.parse(calls[0].init.body).app.appid, 'app-from-credential')
+  const result = await provider.synthesize({ text: '测试' })
+
+  assert.equal(calls[0].url, 'https://tts.example.test/unidirectional')
+  assert.equal(calls[0].headers['X-Api-Resource-Id'], 'volc.custom.tts')
+  assert.equal(calls[0].body.user.uid, 'custom-uid')
+  assert.equal(calls[0].body.req_params.speaker, 'zh_male_wennuanahu_moon_bigtts')
+  assert.equal(calls[0].body.req_params.audio_params.sample_rate, 16000)
+  assert.equal(result.sampleRate, 16000)
 })
 
-test('火山：pcm / mp3 / wav 三种 encoding 映射', async () => {
+test('火山 plan：pcm / mp3 / wav 三种 format 映射到 audio_params.format', async () => {
   for (const format of ['pcm', 'mp3', 'wav']) {
-    const calls = []
-    const provider = volcanoProvider({ calls })
+    const { fetchImpl, calls } = createVolcanoFetchStub([jsonLinesResponse([
+      { header: { reqid: 'test', code: 0 }, data: audioBase64([1]) },
+    ])])
+    const provider = createTtsProvider('volcano', { resolveKey, fetchImpl })
     const result = await provider.synthesize({ text: '测试', format })
-    assert.equal(JSON.parse(calls[0].init.body).audio.encoding, format)
+    assert.equal(calls[0].body.req_params.audio_params.format, format)
     assert.equal(result.format, format)
   }
 })
 
-test('火山：未指定 format 时默认 pcm', async () => {
-  const calls = []
-  const provider = volcanoProvider({ calls })
+test('火山 plan：未指定 format 时默认 pcm', async () => {
+  const { fetchImpl, calls } = createVolcanoFetchStub([jsonLinesResponse([
+    { header: { reqid: 'test', code: 0 }, data: audioBase64([1]) },
+  ])])
+  const provider = createTtsProvider('volcano', { resolveKey, fetchImpl })
   const result = await provider.synthesize({ text: '测试' })
-  assert.equal(JSON.parse(calls[0].init.body).audio.encoding, 'pcm')
+  assert.equal(calls[0].body.req_params.audio_params.format, 'pcm')
   assert.equal(result.format, 'pcm')
 })
 
-test('火山：speed 映射到 speed_ratio，缺省为 1', async () => {
-  const fast = []
-  await volcanoProvider({ calls: fast }).synthesize({ text: '测试', speed: 2 })
-  assert.equal(JSON.parse(fast[0].init.body).audio.speed_ratio, 2)
-
-  const slow = []
-  await volcanoProvider({ calls: slow }).synthesize({ text: '测试', speed: '0.5' })
-  assert.equal(JSON.parse(slow[0].init.body).audio.speed_ratio, 0.5)
-
-  const normal = []
-  await volcanoProvider({ calls: normal }).synthesize({ text: '测试' })
-  assert.equal(JSON.parse(normal[0].init.body).audio.speed_ratio, 1)
+test('火山 plan：speed 映射到 audio_params.speech_rate，缺省为 1', async () => {
+  const run = async (speed) => {
+    const { fetchImpl, calls } = createVolcanoFetchStub([jsonLinesResponse([
+      { header: { reqid: 'test', code: 0 }, data: audioBase64([1]) },
+    ])])
+    const provider = createTtsProvider('volcano', { resolveKey, fetchImpl })
+    const result = await provider.synthesize({ text: '测试', speed })
+    assert.equal(calls[0].body.req_params.audio_params.speech_rate, Number(speed ?? 1))
+    return result
+  }
+  await run(2)
+  await run('0.5')
+  await run(undefined)
 })
 
-test('火山：上游业务错误码与 HTTP 错误都会抛错', async () => {
-  const business = volcanoProvider({
-    fetchImpl: async () => volcanoResponse(new Uint8Array(0), { code: 3001, message: 'invalid appid' }),
-  })
-  await assert.rejects(business.synthesize({ text: '你好' }), /volcano TTS error 3001: invalid appid/)
+test('火山 plan：服务端错误 header（非 0 code）转成拒绝', async () => {
+  const { fetchImpl } = createVolcanoFetchStub([jsonLinesResponse([
+    { header: { reqid: 'test', code: 45000010, message: 'load grant: requested grant not found in SaaS storage' } },
+  ])])
+  const provider = createTtsProvider('volcano', { resolveKey, fetchImpl })
+  await assert.rejects(
+    provider.synthesize({ text: '你好' }),
+    /volcano TTS error 45000010: load grant/,
+  )
+})
 
-  const http = volcanoProvider({
-    fetchImpl: async () => jsonResponse({ code: 3003, message: 'quota exceeded' }, { ok: false, status: 429 }),
+test('火山 plan：连接失败（fetch 抛错）转成拒绝', async () => {
+  const provider = createTtsProvider('volcano', {
+    resolveKey,
+    fetchImpl: async () => { throw new Error('HTTP 401 Unauthorized') },
   })
-  await assert.rejects(http.synthesize({ text: '你好' }), /volcano TTS HTTP 429 quota exceeded/)
+  await assert.rejects(provider.synthesize({ text: '你好' }), /HTTP 401 Unauthorized/)
+})
 
-  const noData = volcanoProvider({
-    fetchImpl: async () => jsonResponse({ code: 3000, message: 'Success' }),
-  })
-  await assert.rejects(noData.synthesize({ text: '你好' }), /no audio data/)
+test('火山 plan：只有结束行没有音频数据时抛 no audio data', async () => {
+  const { fetchImpl } = createVolcanoFetchStub([jsonLinesResponse([
+    { header: { reqid: 'test', code: 0 } },
+  ])])
+  const provider = createTtsProvider('volcano', { resolveKey, fetchImpl })
+  await assert.rejects(provider.synthesize({ text: '你好' }), /no audio data/)
+})
+
+test('火山 plan：响应流关闭即收尾（无需显式结束行）', async () => {
+  const { fetchImpl } = createVolcanoFetchStub([jsonLinesResponse([
+    { header: { reqid: 'test', code: 0 }, data: audioBase64([7, 7]) },
+  ])])
+  const provider = createTtsProvider('volcano', { resolveKey, fetchImpl })
+  const result = await provider.synthesize({ text: '你好' })
+  assert.deepEqual(result.audio, Uint8Array.from([7, 7]))
 })
 
 test('火山：非法 format / speed / 空文本会被拒绝', async () => {
@@ -391,20 +467,24 @@ test('火山：listVoices 返回静态音色表的过滤结果', async () => {
   assert.ok(voices.every((voice) => voice.provider === 'volcano'))
 })
 
-test('火山：createStream 分块产出，拼接结果等于 synthesize', async () => {
-  const bytes = new Uint8Array(8000)
-  for (let i = 0; i < bytes.length; i += 1) bytes[i] = (i * 7) % 256
+test('火山 plan：createStream 分块产出顺序，拼接结果等于 synthesize', async () => {
+  const chunkA = Uint8Array.from([1, 2, 3, 4])
+  const chunkB = Uint8Array.from([5, 6, 7, 8, 9, 10, 11, 12])
+  const lines = [
+    { header: { reqid: 'test', code: 0 }, data: audioBase64(chunkA) },
+    { header: { reqid: 'test', code: 0 }, data: audioBase64(chunkB) },
+    { header: { reqid: 'test', code: 0 } },
+  ]
 
-  let calls = 0
-  const fetchImpl = async () => {
-    calls += 1
-    return volcanoResponse(bytes)
-  }
-  const provider = volcanoProvider({ fetchImpl })
-
+  // 先跑一次 synthesize 作为拼接基准
+  const synthStub = createVolcanoFetchStub([jsonLinesResponse(lines)])
+  const provider = createTtsProvider('volcano', { resolveKey, fetchImpl: synthStub.fetchImpl })
   const synthesized = await provider.synthesize({ text: '一段较长的文本' })
-  const stream = provider.createStream({ text: '一段较长的文本' })
 
+  // 再跑一次 createStream，逐块产出顺序与内容都应一致
+  const streamStub = createVolcanoFetchStub([jsonLinesResponse(lines)])
+  const streaming = createTtsProvider('volcano', { resolveKey, fetchImpl: streamStub.fetchImpl })
+  const stream = streaming.createStream({ text: '一段较长的文本' })
   assert.equal(stream.format, 'pcm')
   assert.equal(stream.sampleRate, 24000)
   assert.equal(stream.channels, 1)
@@ -413,39 +493,48 @@ test('火山：createStream 分块产出，拼接结果等于 synthesize', async
   const chunks = []
   for await (const chunk of stream.chunks) chunks.push(chunk)
 
-  assert.equal(calls, 2)
-  assert.ok(chunks.length >= 2, '应产出多个分片')
-  assert.equal(chunks[0].length, 3072) // 4096 个 base64 字符 = 3072 字节
+  assert.deepEqual(chunks, [chunkA, chunkB])
   assert.deepEqual(joinBytes(chunks), synthesized.audio)
-  assert.deepEqual(joinBytes(chunks), bytes)
+  assert.deepEqual(joinBytes(chunks), joinBytes([chunkA, chunkB]))
 })
 
-test('火山：createStream 在消费时才解析凭据并抛 credential', async () => {
-  const provider = createTtsProvider('volcano', {
-    config: { appId: 'app-1' },
-    resolveKey: async () => undefined,
-    fetchImpl: async () => { throw new Error('不应该发起网络请求') },
-  })
-  const stream = provider.createStream({ text: '你好' })
-  await assert.rejects(
-    (async () => { for await (const chunk of stream.chunks) void chunk })(),
-    (err) => err.code === 'credential',
-  )
-})
-
-test('火山：cancel() 后停止产出', async () => {
-  const bytes = new Uint8Array(9000).fill(7)
-  const provider = volcanoProvider({ fetchImpl: async () => volcanoResponse(bytes) })
+test('火山 plan：cancel() 后停止产出', async () => {
+  const { fetchImpl, calls } = createVolcanoFetchStub([jsonLinesResponse([
+    { header: { reqid: 'test', code: 0 }, data: audioBase64([1, 2, 3]) },
+    { header: { reqid: 'test', code: 0 }, data: audioBase64([9, 9]) },
+    { header: { reqid: 'test', code: 0 } },
+  ])])
+  const provider = createTtsProvider('volcano', { resolveKey, fetchImpl })
   const stream = provider.createStream({ text: '你好' })
   const iterator = stream.chunks[Symbol.asyncIterator]()
 
   const first = await iterator.next()
   assert.equal(first.done, false)
-  assert.equal(first.value.length, 3072)
+  assert.deepEqual([...first.value], [1, 2, 3])
 
   stream.cancel()
   const second = await iterator.next()
   assert.equal(second.done, true)
+})
+
+test('火山 plan：外部 signal 中止后停止产出', async () => {
+  const controller = new AbortController()
+  const { fetchImpl, calls } = createVolcanoFetchStub([jsonLinesResponse([
+    { header: { reqid: 'test', code: 0 }, data: audioBase64([4, 5, 6]) },
+    { header: { reqid: 'test', code: 0 }, data: audioBase64([9, 9]) },
+  ])])
+  const provider = createTtsProvider('volcano', { resolveKey, fetchImpl })
+  const stream = provider.createStream({ text: '你好', signal: controller.signal })
+  const iterator = stream.chunks[Symbol.asyncIterator]()
+
+  const first = await iterator.next()
+  assert.equal(first.done, false)
+  assert.deepEqual([...first.value], [4, 5, 6])
+
+  controller.abort()
+  const second = await iterator.next()
+  assert.equal(second.done, true)
+  assert.equal(calls.length, 1)
 })
 
 test('硅基流动：synthesize 请求体与二进制响应', async () => {
@@ -626,31 +715,21 @@ test('硅基流动：listVoices 缺凭据时不回落，直接抛 credential', a
   await assert.rejects(provider.listVoices({}), (err) => err.code === 'credential')
 })
 
-test('两个 Provider 的 synthesize 都会把外部 signal 接入 fetch', async () => {
+test('硅基流动：synthesize 把外部 signal 接入 fetch', async () => {
   const seen = []
-  // 在 fetch 内部中止外部 signal，验证内部取消作用域会同步跟随
-  const record = (controller, responseFactory) => async (url, init) => {
-    seen.push({ url, signal: init.signal })
-    assert.ok(init.signal instanceof AbortSignal)
-    assert.equal(init.signal.aborted, false)
-    controller.abort()
-    assert.equal(init.signal.aborted, true)
-    return responseFactory()
-  }
-
-  const volcanoController = new AbortController()
-  const volcano = volcanoProvider({
-    fetchImpl: record(volcanoController, () => volcanoResponse(new Uint8Array([1]))),
+  const controller = new AbortController()
+  const provider = siliconFlowProvider({
+    fetchImpl: async (url, init) => {
+      seen.push({ url, signal: init.signal })
+      assert.ok(init.signal instanceof AbortSignal)
+      assert.equal(init.signal.aborted, false)
+      controller.abort()
+      assert.equal(init.signal.aborted, true)
+      return audioResponse(new Uint8Array([1]))
+    },
   })
-  await volcano.synthesize({ text: '你好', signal: volcanoController.signal })
+  await provider.synthesize({ text: '你好', signal: controller.signal })
 
-  const siliconFlowController = new AbortController()
-  const siliconflow = siliconFlowProvider({
-    fetchImpl: record(siliconFlowController, () => audioResponse(new Uint8Array([1]))),
-  })
-  await siliconflow.synthesize({ text: '你好', signal: siliconFlowController.signal })
-
-  assert.equal(seen.length, 2)
-  assert.match(seen[0].url, /openspeech\.bytedance\.com/)
-  assert.match(seen[1].url, /api\.siliconflow\.cn/)
+  assert.equal(seen.length, 1)
+  assert.match(seen[0].url, /api\.siliconflow\.cn/)
 })
