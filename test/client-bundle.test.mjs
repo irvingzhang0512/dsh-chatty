@@ -16,16 +16,25 @@ const bundlePath = path.join(root, 'lib', 'client.js')
 
 function reactStub() {
   const noop = () => {}
-  return {
+  // useEffect 立即执行回调：让冒烟测试连副作用一起跑（此前 loadDraft 残留
+  // 调用就是在 useEffect 里抛 ReferenceError，noop 桩抓不到）。
+  // 副作用里的异常被收集，用例末尾统一断言为空。
+  const effects = []
+  const useEffect = (fn) => {
+    try { fn() } catch (error) { effects.push(error) }
+  }
+  const stub = {
     createElement: (type, props, ...children) => ({ type, props, children }),
     useReducer: (reducer, initial) => [typeof initial === 'function' ? initial() : initial, noop],
-    useEffect: noop,
-    useLayoutEffect: noop,
+    useEffect,
+    useLayoutEffect: useEffect,
     useRef: (value) => ({ current: value === undefined ? null : value }),
     useState: (value) => [typeof value === 'function' ? value() : value, noop],
     useMemo: (factory) => factory(),
     useCallback: (fn) => fn,
   }
+  stub.effectErrors = effects
+  return stub
 }
 
 async function loadClientBundle() {
@@ -124,8 +133,9 @@ test('客户端 bundle：入口 id、inject 面与 slot 注册', async () => {
 
 test('客户端 bundle：Voice Bar 与 Draft 面板首次渲染不抛错', async () => {
   const { captured } = await loadClientBundle()
+  const stub = reactStub()
   const mod = captured.factory((name) => {
-    if (name === 'react') return reactStub()
+    if (name === 'react') return stub
     throw new Error(`unexpected require: ${name}`)
   })
   const harness = createClientHarness()
@@ -145,6 +155,14 @@ test('客户端 bundle：Voice Bar 与 Draft 面板首次渲染不抛错', async
     assert.ok(rendered !== undefined, `${name} 的组件返回 undefined`)
   }
 
+  // useEffect 已被 stub 立即执行：副作用里的异常（如残留调用导致的
+  // ReferenceError）必须为空，否则真机上整个 slot 会崩掉。
+  assert.deepEqual(
+    stub.effectErrors.map((error) => String(error && error.message || error)),
+    [],
+    '组件副作用不应抛错',
+  )
+
   // 插件卡片的 summary 视图（Plugins 页面只用它渲染一行说明）。
   const card = harness.slots.find((item) => item.spec.name === 'plugins.item')
   const summary = card.component({ ...props, view: 'summary' })
@@ -153,8 +171,9 @@ test('客户端 bundle：Voice Bar 与 Draft 面板首次渲染不抛错', async
 
 test('客户端 bundle：组件在无设置、无草稿的初始状态下也能渲染', async () => {
   const { captured } = await loadClientBundle()
+  const stub = reactStub()
   const mod = captured.factory((name) => {
-    if (name === 'react') return reactStub()
+    if (name === 'react') return stub
     throw new Error(`unexpected require: ${name}`)
   })
   const harness = createClientHarness()
@@ -168,4 +187,10 @@ test('客户端 bundle：组件在无设置、无草稿的初始状态下也能�
   const dock = harness.slots.find((item) => item.spec.name === 'conversation.input.dock')
   const dockWrapper = dock.component({ input: null })
   assert.equal(dockWrapper.type(dockWrapper.props), null, '空闲且无草稿时面板应返回 null')
+
+  assert.deepEqual(
+    stub.effectErrors.map((error) => String(error && error.message || error)),
+    [],
+    '空状态下副作用不应抛错',
+  )
 })
