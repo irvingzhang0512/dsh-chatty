@@ -212,16 +212,15 @@ refs:
 
 | 动作 | 默认指令词 | 说明 |
 |---|---|---|
-| `send` | `发送` `提交` `发送消息` `send` `submit` | 将 Voice Draft 发送到当前 Session |
-| `undo` | `撤销` `重说` `撤回` `undo` | 删除最近一个 Utterance |
-| `clear` | `清空` `清除` `clear` | 清空整个 Voice Draft |
-| `cancel` | `取消` `cancel` | 取消本次输入 |
-| `polish` | `润色` `整理一下` `polish` | 调用 DSH LLM 润色当前 Draft |
+| `send` | `发送` `提交` `发送消息` `send` `submit` | 提交输入框并清空语音缓冲 |
+| `undo` | `撤销` `重说` `撤回` `undo` | 移除最后一段语音 |
+| `clear` | `清空` `清除` `clear` | 清空全部语音内容 |
+| `polish` | `润色` `整理一下` `polish` | 调用 DSH LLM 润色语音全文 |
 | `stop_listening` | `停止录音` `停止监听` `结束监听` `stop listening` | 停止长时间监听 |
-| `pause` | `暂停` `pause` | 暂停监听 |
-| `resume` | `继续听` `继续` `resume` | 恢复监听 |
 | `read` | `朗读` `读一下` `read` | 朗读当前 Assistant 回复 |
 | `stop_reading` | `停止朗读` `别读了` `stop reading` | 停止 TTS |
+
+> `cancel` / `pause` / `resume` 已在 v0.4 移除（与清空重复、主按钮即开关）。
 
 > 润色**不在** `voice_control` 下配置：提示词、provider、模型等字段都在顶层 `polish` 配置区（见 §6.2）。
 
@@ -345,16 +344,10 @@ voice_control:
       - 重说
     clear:
       - 清空
-    cancel:
-      - 取消
     polish:
       - 润色
     stop_listening:
       - 停止录音
-    pause:
-      - 暂停
-    resume:
-      - 继续听
     read:
       - 朗读
     stop_reading:

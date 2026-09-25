@@ -16,12 +16,12 @@
 
 ### Changed
 
-- **听写直写：composer 即草稿（UI/架构简化）**。识别出的最终文本不再进入插件的独立「语音草稿面板」，而是**直接追加写入 Session 输入框**（保留已打内容，换行衔接），用户在输入框里编辑、确认、按发送。配套变更：dock 草稿面板收缩为**监听状态小条**（状态 + 音量柱 + 实时预览 + 计时 + 撤销/润色/停止聆听），无 textarea；「撤销最后一段」改为按**插入历史**在输入框内回退（手改过的段落自动跳过），「清空」= 回退全部语音段落；发送直接走 composer 自带提交；「润色」对输入框全文生效；**指令判定移到客户端**（`lib/command-parser.js` 与 `lib/composer-text.js` 由构建脚本内联进 bundle，两端共享同一实现）；宿主 `/dsh-chatty/draft` 路由仅保留 `polish`（add/edit/undo/clear/command 返回 410 deprecated），`lib/draft.js` 领域模型保留供未来复用。
+- **听写直写 v0.4：插件自持「语音文本缓冲」作为唯一事实源**。查实 DSH 契约：composer 文本存在 Lexical 编辑器里，插件 slot 拿到的 `props.input` 是提交状态机（不含文本），`InputActions` 只有 `setDraft`（整段替换）/attachments/`submit`——没有读取接口。此前「读输入框 → 追加」读到的恒为空，导致**第二句覆盖第一句**、撤销基准错乱。现在：插件维护 `voiceBuffer` 与分段插入历史——追加 = `appendSegment(buffer, text)` 后 `setDraft(buffer)`；撤销 = 按历史回退 buffer；清空 = buffer 清空 + `setDraft('')`；润色对 buffer 全文生效；发送 = `submit()` 后清空 buffer；重新开始监听也会清空 buffer（旧内容不写回新一段）。已知取舍：监听中手动点发送且不停止监听就继续说，旧内容会被重新写回——请用语音指令「发送」或停止监听后手动发送。
+- **语音指令精简为 7 个**：发送 / 撤销 / 清空 / 润色 / 停止录音 / 朗读 / 朗读停止。删除 `cancel`（与清空重复）与 `pause` / `resume`（主按钮即开关）；`DEFAULT_COMMANDS`、设置卡说明、dock 条按钮（撤销/清空/润色/停止聆听/? 指令）同步。
 - **Provider 精简为两个（STT/TTS 均为 Agent Plan + 硅基流动）**：删除「火山经典（App ID + Access Token）」整条链路（STT 批量 recognize/flash、TTS v1 HTTP、`app_id_credential` / `cluster` 配置字段与设置卡输入）。`STT_PROVIDER_KEYS` 回到 `['volcano', 'siliconflow']`，volcano 只保留 plan 鉴权与流式协议。
-- **TTS 的火山 Provider 重写为 Agent Plan 单向流式合成**：`POST /api/v3/tts/unidirectional`（HTTP，`X-Api-App-Key` / `X-Api-Access-Key` 均填方舟 API Key，与 STT 同一把钥匙）；响应按 JSON 行流（`data` base64 音频块）解析，兼容二进制音频载体；删除经典 v1 HTTP 实现与 `tts.app_id_credential` / `tts.cluster` 配置字段，新增 `tts.stream_url` / `tts.resource_id` 端点覆盖。实测该端点对未开通语音授权的账号返回 `45000010 load grant: ... not found in SaaS storage`——`scripts/verify-tts-plan.mjs` 留作开通后的连通验证（成功时音频落盘可直接试听）。
-- **STT 的火山 Provider 细节修正**：流式端点确认为 `plan/sauc/bigmodel_nostream`（`bigmodel` 流式路径实测 404）；`transcribe` 一律内部走流式协议发整段音频（Agent Plan 无批量 HTTP 端点）。
-- **默认 provider 对齐真实凭据**：`stt.provider` / `tts.provider` 默认 `siliconflow`，`stt.credential` / `tts.credential` 默认 `SILICONFLOW_API_KEY`（凭据文件里的常用名）；设置卡切换 provider 时凭据名、模型自动跟随该 provider 默认值。
-- **Agent Plan 语音识别/合成为实验性**：实测端点对该 API Key 返回 `401/45000010 {"error":"load grant: ... not found in SaaS storage"}`（账号侧缺少豆包语音授权，需在火山控制台开通语音模型）；开通后分别运行 `node scripts/verify-volcano-plan.mjs` 与 `node scripts/verify-tts-plan.mjs` 验证即可转正。
+- **TTS 的火山 Provider 重写为 Agent Plan 语音合成 2.0**：`POST /api/v3/plan/tts/unidirectional`（HTTP 单请求，`X-Api-Key` 鉴权，resource `seed-tts-2.0`，2.0 代音色 `*_uranus_bigtts`；响应为单个 JSON `{code:0, data:base64}`）。实测打通（45KB MP3 落盘）。音色代次不匹配返回 55000000。删除经典 v1 HTTP 实现。
+- **STT 的火山 Provider 细节修正**：流式端点确认为 `plan/sauc/bigmodel_nostream`；鉴权为单一 `X-Api-Key` 头（`X-Api-App-Key` / `X-Api-Access-Key` 双头是经典账号体系，plan Key 下返回 401 grant not found）；`transcribe` 一律内部走流式协议发整段音频。
+- **默认 provider 切回火山（Agent Plan）**：`stt.provider` / `tts.provider` 默认 `volcano`，`stt.credential` / `tts.credential` 默认 `VOLCENGINE_AGENT_PLAN_API_KEY`；硅基流动保留为可选项。
 
 ### Fixed
 
