@@ -443,8 +443,8 @@ test('宿主：session/event → SSE speech.segment，stop 打断队列', { skip
 
   const onEvent = harness.listeners.get('session/event')
   onEvent({ id: 's1' }, {
-    type: 'assistant/chunk', seq: 1,
-    data: { turn: 1, step: 1, chunk: { type: 'text-delta', text: '这是第一句回复。' } },
+    type: 'assistant/message', seq: 1,
+    data: { turn: 1, step: 1, message: { id: 'm1', role: 'assistant', content: [{ type: 'text', text: '这是第一句回复。' }] } },
   })
   const streamed = res.text()
   assert.equal(streamed.includes('event: speech.segment'), true)
@@ -453,8 +453,8 @@ test('宿主：session/event → SSE speech.segment，stop 打断队列', { skip
   // 其它会话的事件不应串台。
   const before = res.text().length
   onEvent({ id: 's2' }, {
-    type: 'assistant/chunk', seq: 2,
-    data: { turn: 1, step: 1, chunk: { type: 'text-delta', text: '另一个会话的回复。' } },
+    type: 'assistant/message', seq: 2,
+    data: { turn: 1, step: 1, message: { id: 'm2', role: 'assistant', content: [{ type: 'text', text: '另一个会话的回复。' }] } },
   })
   assert.equal(res.text().length, before)
 
@@ -470,8 +470,8 @@ test('宿主：手动朗读回落到最近一次 Assistant 回复', { skip }, as
   const harness = createHarness()
   const onEvent = harness.listeners.get('session/event')
   onEvent({ id: 's9' }, {
-    type: 'assistant/chunk', seq: 1,
-    data: { turn: 1, step: 1, chunk: { type: 'text-delta', text: '最近一次回复的内容。' } },
+    type: 'assistant/message', seq: 1,
+    data: { turn: 1, step: 1, message: { id: 'm1', role: 'assistant', content: [{ type: 'text', text: '最近一次回复的内容。' }] } },
   })
   const { res } = await call(harness, '/dsh-chatty/speech/render', { method: 'POST', body: { sessionId: 's9' } })
   const body = res.json()
@@ -481,6 +481,52 @@ test('宿主：手动朗读回落到最近一次 Assistant 回复', { skip }, as
   const empty = await call(harness, '/dsh-chatty/speech/render', { method: 'POST', body: { sessionId: 'nobody' } })
   assert.equal(empty.res.json().segments.length, 0)
   assert.equal(empty.res.json().empty, true)
+})
+
+test('宿主：/voice-chat 运行时开关 + 语音对话模式下回复自动进语音流水线', { skip }, async () => {
+  const harness = createHarness({ tts: { auto_read: false } })
+  const sse = harness.routes.get('/dsh-chatty/speech/events')
+  const req = makeReq({ url: '/dsh-chatty/speech/events?sessionId=vc' })
+  const res = makeRes()
+  await sse.handler(req, res)
+  const onEvent = harness.listeners.get('session/event')
+  try {
+    // 默认关闭：assistant/message（v3 形状）不推进语音流水线
+    onEvent({ id: 'vc' }, {
+      type: 'assistant/message', seq: 1,
+      data: { turn: 1, step: 1, message: { id: 'm1', role: 'assistant', content: [{ type: 'text', text: '对话开启前的回复。' }] } },
+    })
+    onEvent({ id: 'vc' }, { type: 'turn/end', seq: 2, data: { turn: 1, reason: { kind: 'stop' } } })
+    assert.equal(res.text().includes('对话开启前的回复'), false)
+
+    // 开启：POST /voice-chat → /status 回报 true → 事件推进 SSE
+    const on = await call(harness, '/dsh-chatty/voice-chat', { method: 'POST', body: { enabled: true } })
+    assert.equal(on.res.json().voice_chat, true)
+    const status = await call(harness, '/dsh-chatty/status')
+    assert.equal(status.res.json().tts.voice_chat, true)
+
+    onEvent({ id: 'vc' }, {
+      type: 'assistant/message', seq: 3,
+      data: { turn: 2, step: 1, message: { id: 'm2', role: 'assistant', content: [{ type: 'text', text: '语音对话模式的回复。' }] } },
+    })
+    // turn/end 触发 buffer flush → 段落成段下发
+    onEvent({ id: 'vc' }, { type: 'turn/end', seq: 4, data: { turn: 2, reason: { kind: 'stop' } } })
+    assert.equal(res.text().includes('语音对话模式的回复'), true)
+
+    // 关闭后不再推进
+    const off = await call(harness, '/dsh-chatty/voice-chat', { method: 'POST', body: { enabled: false } })
+    assert.equal(off.res.json().voice_chat, false)
+    const before = res.text().length
+    onEvent({ id: 'vc' }, {
+      type: 'assistant/message', seq: 5,
+      data: { turn: 3, step: 1, message: { id: 'm3', role: 'assistant', content: [{ type: 'text', text: '关闭后的回复。' }] } },
+    })
+    onEvent({ id: 'vc' }, { type: 'turn/end', seq: 6, data: { turn: 3, reason: { kind: 'stop' } } })
+    assert.equal(res.text().length, before)
+  } finally {
+    // 关闭 SSE：断言失败也不能留下 keepalive 定时器挂住测试进程。
+    req.emitter.emit('close')
+  }
 })
 
 test('宿主：流式 STT 会话 start / push / stop（硅基流动伪流式，假 fetch）', { skip }, async () => {

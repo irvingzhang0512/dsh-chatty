@@ -13,7 +13,7 @@
 - **Agent Plan 连通验证脚本**：`scripts/verify-volcano-plan.mjs`（STT，支持 `--auth dual/bearer/bearer+dual/appkey-only`、`--url`、`--seconds`）与 `scripts/verify-tts-plan.mjs`（TTS，`--text/--format/--voice/--endpoint/--resource-id`，成功时音频落盘可直接试听）。
 - **设置卡试用功能**：语音输入页签「试一下」——录 3.5 秒并按当前 provider 识别，显示识别结果与耗时；语音输出页签「试听」——按当前 provider 合成一句固定文案并播放。
 - **ws-client 握手失败诊断**：握手被 HTTP 4xx/5xx 拒绝时把响应体带进错误信息（火山返回 JSON 错误原因），并销毁响应避免进程挂起。
-- **语音对话模式一键开关**：语音输出页签「语音对话模式（自动朗读 + 说话自动听写）」联动 `tts.auto_read` / `stt.continuous_listening` / `tts.interrupt_on_speech` 三个开关，构成对话闭环（回复完成自动朗读 → 朗读中开口自动打断进监听 → 说完直接听写进输入框）；开启后 Voice Bar 状态前缀「对话 · 」。
+- **语音对话模式移到界面（Voice Bar 🗣）**：输入框旁新增 🗣 按钮——开启后进入语音对话闭环：说话 → 听写进输入框 → **自动发送** → 回复自动朗读（朗读中开口自动打断进监听）；再点退出回到听写模式。运行时状态存宿主内存（`POST /dsh-chatty/voice-chat`，`/status` 回报 `tts.voice_chat`），不持久化，重启后默认关闭；宿主语音流水线的推进条件由 `tts.auto_read` 扩展为 `auto_read || voice_chat`。设置卡保留独立的「自动朗读所有回复」开关（朗读模式的自动朗读）。
 - **朗读进度与段间预取**：多段朗读显示「朗读中 x/N」进度；播放当前段的同时预发起下一段合成（段间停顿从整段合成时间缩到接近 0）；手动朗读入口立即显示「正在整理朗读内容…」（表格 LLM 摘要耗时数秒不再无反馈），合成阶段显示「正在合成语音…」。
 
 ### Changed
