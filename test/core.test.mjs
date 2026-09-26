@@ -160,6 +160,36 @@ test('会话事件适配：只放行文本增量与轮次结束', () => {
   assert.equal(interrupted.type, 'reply.cancel')
 })
 
+test('会话事件适配：v3 的 assistant/message 提取正文 text 块（跳过 reasoning）', () => {
+  const session = { id: 's2' }
+  const delta = adaptSessionEvent(session, {
+    type: 'assistant/message', seq: 10,
+    data: {
+      turn: 2, step: 3,
+      message: {
+        id: 'm2', role: 'assistant',
+        content: [
+          { type: 'reasoning', text: '先想一想……' },
+          { type: 'text', text: '这是正文第一段。' },
+          { type: 'text', text: '这是第二段。' },
+        ],
+      },
+      stream: [],
+    },
+  })
+  assert.equal(delta.type, 'reply.delta')
+  assert.equal(delta.conversationId, 's2')
+  assert.equal(delta.text, '这是正文第一段。这是第二段。')
+  assert.equal(delta.turnId, 2)
+
+  // 纯 reasoning / 无正文消息不进语音通道
+  const reasoningOnly = adaptSessionEvent(session, {
+    type: 'assistant/message', seq: 11,
+    data: { turn: 3, step: 1, message: { id: 'm3', role: 'assistant', content: [{ type: 'reasoning', text: '只想想' }] } },
+  })
+  assert.equal(reasoningOnly, null)
+})
+
 test('HTTP 工具：来源可信校验与 JSON 解析', () => {
   assert.equal(isLoopback('127.0.0.1'), true)
   assert.equal(isLoopback('::ffff:127.0.0.1'), true)
