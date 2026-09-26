@@ -147,6 +147,24 @@ function volcanoTtsResponse(bytes) {
 }
 
 /**
+ * 火山 plan 合成的 JSON 行流响应：每行一个 JSON（音频 data 行 + 20000000 结束行）。
+ * 大音频（PCM）实测为多行；lib 按行解析并收集全部 data 拼接。
+ */
+function volcanoTtsLineStreamResponse(blocks, { done = true } = {}) {
+  const lines = blocks.map((block) => JSON.stringify({ code: 0, message: '', data: audioBase64(block) }))
+  if (done) lines.push(JSON.stringify({ code: 20000000, message: 'OK' }))
+  const text = lines.join('\n') + '\n'
+  return {
+    ok: true,
+    status: 200,
+    headers: makeHeaders({ 'content-type': 'text/plain; charset=utf-8' }),
+    async arrayBuffer() { return utf8ArrayBuffer(text) },
+    async text() { return text },
+    async json() { return JSON.parse(text) },
+  }
+}
+
+/**
  * 火山 plan 合成 fetch 桩：记录每次调用（url/headers/body），
  * 请求体断言用 JSON.parse(init.body)。
  */
@@ -364,6 +382,39 @@ test('火山 plan：synthesize 请求体、鉴权头与音频解码', async () =
     sampleRate: 24000,
     channels: 1,
   })
+})
+
+test('火山 plan：JSON 行流响应（多 data 行 + 20000000 结束行）按序拼接', async () => {
+  const blockA = Uint8Array.from([1, 2, 3, 4])
+  const blockB = Uint8Array.from([5, 6, 7, 8])
+  const { fetchImpl, calls } = createVolcanoFetchStub([volcanoTtsLineStreamResponse([blockA, blockB])])
+  const provider = createTtsProvider('volcano', { resolveKey, fetchImpl })
+  const result = await provider.synthesize({ text: '长文本合成', format: 'pcm' })
+
+  // 大音频（PCM）实测分多行：全部 data 块按序拼接，20000000 结束行不报错
+  assert.deepEqual(result.audio, Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8]))
+  assert.equal(calls.length, 1)
+})
+
+test('火山 plan：20000000 结束行之前出现错误行则报错', async () => {
+  const text = [
+    JSON.stringify({ code: 0, message: '', data: audioBase64([1]) }),
+    JSON.stringify({ code: 55000000, message: 'resource ID is mismatched with speaker' }),
+    JSON.stringify({ code: 20000000, message: 'OK' }),
+  ].join('\n')
+  const stubResponse = {
+    ok: true,
+    status: 200,
+    headers: makeHeaders({ 'content-type': 'text/plain; charset=utf-8' }),
+    async arrayBuffer() { return utf8ArrayBuffer(text) },
+    async text() { return text },
+  }
+  const { fetchImpl } = createVolcanoFetchStub([stubResponse])
+  const provider = createTtsProvider('volcano', { resolveKey, fetchImpl })
+  await assert.rejects(
+    provider.synthesize({ text: '你好' }),
+    (err) => err.code === '55000000' && /音色代次不匹配/.test(err.message),
+  )
 })
 
 test('火山 plan：config 可覆盖 voice / uid / endpoint / resourceId / sampleRate', async () => {

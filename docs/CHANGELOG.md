@@ -27,6 +27,7 @@
 
 ### Fixed
 
+- **火山 Agent Plan TTS 大音频失败（PCM）**：plan 端点响应实为 **JSON 行流**（每行一个 `{code, message, data: base64}`，大音频分多行，以 `{code:20000000, message:'OK'}` 结束行收尾）——此前按「单个 JSON」整包解析，撞到第二行报 `response is not valid JSON`（小 mp3 只有一行所以验证脚本侥幸通过）。现在按行解析：收集全部 data 块按序拼接，`code 20000000` 结束行跳过，其它非 0 code 报错（55000000 附音色代次提示）。真实 Key 实测 PCM 104KB 合成成功。
 - 设置卡（`plugins.item` / `plugins.row.config` / `settings.plugin.item`）的折叠头部与 DSH 原生设置卡对齐：标题一行、描述一行（`dch-card-text` 上下堆叠），右侧可旋转的展开箭头（优先用 `@deepseek-ai/dsh-client-ui-primitives` 的 ChevronDown 图标），`14px 16px` 内边距、12px 圆角与 body 顶部分隔线。修复此前标题与描述挤在同一行、卡片高度异常偏小、看不出可展开的问题。
 
 ## [0.1.0] - 2026-09-23
