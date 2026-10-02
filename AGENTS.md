@@ -1,7 +1,18 @@
 # AGENTS.md — 本仓库协作约定
 
+## 开发入口与文档分工
+
+先返回根维护目录，读取 [根 AGENTS](../AGENTS.md)、[维护规范](../docs/MAINTENANCE.md) 和开发 Skill；本仓库的特殊约束仍适用。统一流程见 [文档驱动开发](../docs/DOC-DRIVEN-DEVELOPMENT.md)，当前可编辑规格见 [docs/SPEC.md](docs/SPEC.md)。
+
+- 功能新增／修改：读取规格及其差异，先改预期和验收条件，涉及接口／配置／存储时先同步技术契约，再改源码并验证。自然语言需求也先落入规格。
+- Bug：按已有预期复现并直接查看源码、日志和测试，修复回归；预期未变无需改规格，遗漏／歧义补规格，产品规则变化部分按功能流程。不得改规格把 Bug 解释为正确行为。
+- 原始需求保持只读历史来源；实现状态和验证结果分开记录，冲突保留证据并标待确认。README 是入口，架构／配置／接口文档维护技术契约。
+- 纯文档任务检查编号、状态、链接与源码／测试引用，记录未执行的验证；无需运行下面的代码测试／构建或重装。代码改动仍遵循本仓库验证要求。
+- 纯文档变更不提高包版本，独立中文 Angular docs 提交，保持当前实际分支；根仓库同步完整提交锁。安装快照由脚本检查，未变保留，不自动推送。
+
+
 > 本文件约束在本仓库（`dsh-chatty`，包名 `@irvingzhang0512/dsh-chatty`）内工作的 AI Agent 与人类贡献者的行为约定。
-> 建议阅读顺序：`README.md` → 本文件 → `docs/ARCHITECTURE.md`（实现契约）→ `docs/DEVELOPMENT.md`。
+> 建议阅读顺序：根维护约定 → 本文件 → `docs/SPEC.md`（当前行为）→ `docs/ARCHITECTURE.md`（技术契约）→ `docs/DEVELOPMENT.md`。
 
 ---
 
@@ -65,7 +76,7 @@ dsh web                                     # 启动 DSH Web 实测（刷新浏�
 
 ## 5. 改动流程
 
-1. 先确认改动落在哪个契约上：读 `docs/ARCHITECTURE.md` 对应小节，必要时同步更新契约文档；
+1. 按上面的功能／Bug 入口确认已有预期；功能先改 SPEC 和验收，再确认技术契约：读 `docs/ARCHITECTURE.md` 对应小节，必要时同步更新契约文档；
 2. 改 `lib/` / `lib/client-src/` / `test/`，运行 `npm run build:client`（改片段时）与 `npm test`，必须全绿；
 3. `npm run lint` 通过；
 4. 在 `docs/CHANGELOG.md` 的 `[Unreleased]` 记一条（Added / Changed / Fixed / Removed）；

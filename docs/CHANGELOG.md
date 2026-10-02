@@ -1,5 +1,11 @@
 # 变更记录
 
+## 2026-10-03 文档基线（不变更包版本）
+
+- 新增 [当前功能规格](SPEC.md)，建立功能与 Bug 两条开发入口，记录实现依据、现有验证入口和待办。
+- 本次只修改维护文档，不变更公开 API、数据格式或运行逻辑；静态核对不代替产品测试及 GUI 兼容验证。
+
+
 本文件遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 改动分节使用 `Added` / `Changed` / `Deprecated` / `Removed` / `Fixed` / `Security`。
 

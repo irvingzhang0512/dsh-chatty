@@ -1,5 +1,8 @@
 # dsh-chatty 开发说明
 
+当前预期与验收见 [SPEC.md](SPEC.md)，功能先改规格与相关技术契约，Bug 保持已有预期直接修源码；混合任务、冲突与不可用环境的收尾见 [根开发流程](../../docs/DOC-DRIVEN-DEVELOPMENT.md)。以下测试／构建步骤适用于代码修改，纯文档任务执行引用和状态检查即可。
+
+
 > 面向本仓库的日常开发。实现契约见 [`ARCHITECTURE.md`](./ARCHITECTURE.md)，配置字段见 [`CONFIG.md`](./CONFIG.md)，设计动机见 [`DESIGN.md`](./DESIGN.md)。
 > 协作约定（提交规范、红线）见 [`../AGENTS.md`](../AGENTS.md)。
 
