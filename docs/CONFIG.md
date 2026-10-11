@@ -1,5 +1,7 @@
 # dsh-chatty 配置参考
 
+目标宿主配置补充：见 [DSH 0.2.0-rc.2 升级适配契约](DSH-UPGRADE-20261011.md)（`dsh-upgrade-20261011-v1`，待确认／待实现）。既有字段含义、凭据边界、覆盖／清理规则不变；目标持久层和表单入口迁移以该版契约为准，旧 settings.yaml 接入说明仍是当前组合基线，不表示目标版本已迁移或验证。
+
 > 本文档描述 `dsh-chatty` 的**配置契约**：字段名、类型、默认值与含义。
 > **字段名与「插件配置默认值」一律以 [`lib/config.js`](../lib/config.js) 的 schemastery schema 为准**；本文与代码不一致时以代码为准，并回来同步本文。
 > **Provider 默认值是另一层**：[`lib/stt/providers.js`](../lib/stt/providers.js) 的 `STT_DEFAULTS` 与 [`lib/tts/providers.js`](../lib/tts/providers.js) 的 `TTS_DEFAULTS` 只在「插件配置留空」时兜底，和 `lib/config.js` 里的默认值不是同一个概念（见 §3.1 / §4.1）。
