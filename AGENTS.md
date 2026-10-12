@@ -69,8 +69,7 @@ feat(config)!: 变更 stt.vad 字段名
 npm test                                    # 重建 lib/client.js 并运行 node --test 单测
 npm run build:client                        # 仅重新生成 lib/client.js
 npm run lint                                # ESM 语法检查 + 片段/生成物结构检查
-dsh plugin --profile web add <本仓库路径>    # 本地安装到 DSH Web（以本地 DSH 版本为准）
-dsh web                                     # 启动 DSH Web 实测（刷新浏览器后生效）
+# Desktop 验证：从根使用 tools/desktop-dev.mjs，详见 docs/DEVELOPMENT.md
 ```
 
 单测无需 `npm install`：本仓库没有运行时依赖，测试全部离线（假 `fetchImpl` / `WebSocketImpl`）。
@@ -82,6 +81,6 @@ dsh web                                     # 启动 DSH Web 实测（刷新浏�
 3. `npm run lint` 通过；
 4. 在 `docs/CHANGELOG.md` 的 `[Unreleased]` 记一条（Added / Changed / Fixed / Removed）；
 5. 按第 2 节 Angular 规范提交；
-6. 需要实测时 `dsh plugin --profile web add <本仓库路径>` 后重启 `dsh web` 并刷新浏览器，在 Network 面板确认 `/dsh-chatty/*` 请求。
+6. 需要实测时使用根 Desktop 隔离工具，先实际 carrier 再原生窗口；正常退出隔离实例后同步副本重启。不要恢复已停用的 Web 服务。
 
 > 不要改动 `docs/REQUIREMENTS.md`：它是需求来源，只能由维护者主动更新。`lib/client.js` 是生成物但**需要提交**，不要手改。

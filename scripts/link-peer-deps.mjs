@@ -46,7 +46,7 @@ function candidateRoots() {
     ? path.join(process.env.APPDATA, 'npm', 'node_modules')
     : path.join(home, 'AppData', 'Roaming', 'npm', 'node_modules')
   const candidates = []
-  if (explicitFrom) candidates.push(explicitFrom)
+  if (explicitFrom) return [path.resolve(explicitFrom)]
   candidates.push(
     path.join(dshHome, 'node_modules'),
     path.join(dshHome, 'profiles', 'web', 'node_modules'),

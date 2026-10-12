@@ -5,20 +5,14 @@
 # resolves the browser bundle by the loader entry name, so a shortened name
 # leaves the UI half silently out of window.__DSH_BOOT__.
 #
-# Override any field in the profile's own cordis.patch.yml, e.g. to switch the
-# STT provider or point the plugin at a private speech endpoint:
-#
-#   - id: dsh-chatty
-#     config:
-#       stt:
-#         provider: siliconflow
-#         credential: siliconflow
-#       tts:
-#         provider: volcano
-#         credential: volcano-speech
+# 全部有效配置在 Chatty 五标签设置卡维护。
+# 识别服务／语言属于官方 speech-to-text 条目；云端参数位于
+# stt.providers.volcano/siliconflow，TTS 参数位于 tts.providers.*。
 #
 # API keys are never written here: they live in DSH Credentials and the plugin
 # configuration only stores a credential reference name.
+- id: ui-voice-input
+  disabled: true
 - insert:
     - id: dsh-chatty
       name: '@irvingzhang0512/dsh-chatty'

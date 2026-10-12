@@ -1,196 +1,56 @@
 # dsh-chatty
 
-本期产品审阅稿见 [PRD](docs/PRD.md)（v4）：采用持续听写，内容累计到草稿，检查／润色后明确发送；语音对话延期，目标界面保留听写／朗读布局，对话按钮不展示。官方配置基线、全配置 UI、Git 仓库 URL 与 Bundle 基线加 Chatty 修订号保持。完整实施仍待确认／验证；旧源码尚未停用自动提交。后续 V1 图示和配置是历史介绍，当前目标以 PRD／SPEC 为准。
+把连续说出的多句话写入 DSH 原生输入框，再由你明确发送；同时提供口令、润色和回复朗读。沿用听写／朗读按钮、dock 和五标签设置卡。
 
-当前功能与验收以 [docs/SPEC.md](docs/SPEC.md) 为入口；原始需求保留为历史来源，技术契约见规格内的文档索引。功能任务先改规格与相关技术契约，用户明确确认该版文档后再开发；已确认同一版不重复询问。Bug 按已有且不变的预期查源码修复。
+当前版本 **0.2.0-rc.2+chatty.1**，精确匹配 Desktop 与官方语音 Bundle **0.2.0-rc.2**。本次交付本地源码和构建产物，新的 GitHub 固定版本尚待发布；公开安装未验收。实际结果见 [验证记录](docs/VERIFICATION-0.2.0-rc.2+chatty.1.md)。
 
+## 功能
 
-> A voice interaction plugin for DeepSeek Harness, providing long-running speech input, voice commands, speech-friendly response rendering, and interruptible text-to-speech playback.
+- 持续听写：点击开麦，按句累计；停止收尾末句，取消丢弃未完成句。普通发送后可继续说下一条。
+- 本地 SenseVoice 与硅基流动采用分句识别；火山 Agent Plan 支持真实流式临时预览，正式结果才入稿。
+- 原生输入框是唯一正文，手写和引用保留；冲突结果可插入、重试或丢弃。
+- 七类整句口令：发送、撤销、清空、润色、停止听写、朗读、停止朗读；可以禁用或要求文字前缀。
+- 手动最新回复朗读和独立自动朗读；代码默认跳过，表格／长列表默认规则摘要，模型摘要需另开。
+- 全部 100 项有效配置集成在当前设置卡：官方 26 项、Chatty 74 项，保留各自所有者。
 
-> 为 DSH 提供长期语音输入、语音指令、语音草稿、语音友好内容渲染和可打断 TTS 的统一语音交互插件。
-
-`dsh-chatty`（包名 `@irvingzhang0512/dsh-chatty`）把语音做成 DSH 的一种**长期可用的人机交互方式**，而不是一次性的「录音转文字」或「文字转语音」。语音输入先进 Voice Draft、由用户明确提交；Assistant 回复分成「页面显示的完整 Markdown」与「适合听的 Speech Text」两条线。
-
-> **状态**：`0.1.0`。模块清单、导出名与数据形状以 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 为实现契约；能力范围以 [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) 第 25 / 26 节为准。
-
----
-
-## 三类核心能力
-
-### 1. STT（Speech-to-Text）
-
-- 麦克风录音，支持 **Push-to-Talk** 与 **Continuous Listening**（长时间监听）。
-- **本地 VAD** 判断是否有人声，无人声不调用远程 STT。
-- **Pre-roll Buffer** 保留触发前约 400 ms 音频，避免句首丢字。
-- STT Provider 抽象同时支持**流式**与**批量**：火山引擎、硅基流动。
-- 识别结果先进入 **Voice Draft**，不自动发送到当前 Session。
-- Streaming 下可显示 **Partial Result**，只有 **Final Result** 才成为正式 Utterance。
-
-### 2. Voice Control（语音指令）
-
-- 发送 / 提交、撤销 / 重说、清空、取消、润色、停止录音、暂停、继续听、朗读、停止朗读。
-- 普通语音内容与指令分离：**整段 Utterance 归一化后完全等于指令词**才算命令，绝不做子串包含匹配。
-- 可选唤醒前缀模式（`DSH，发送`）；V1 不做完整 Wake Word Engine（见下）。
-- 润色调用 DSH 当前 Session / 当前配置的 LLM，润色后仍然不自动发送。
-
-### 3. TTS（Text-to-Speech）
-
-- 手动朗读单条 Assistant 回复，或按配置自动朗读。
-- 随时打断播放（Stop / Interrupt），打断只清 Speech Queue，**不修改原始 Assistant Message**。
-- **Speech Renderer** 把 Markdown / 表格 / 代码转换成适合朗读的内容：代码块跳过、表格摘要、链接只读文字。
-- **Speech Buffer** 以完整 Markdown Block（其次完整句子）为最小单位，不按 Token 送 TTS。
-- TTS 播放期间本地 VAD 继续运行但**不提交远程识别**，避免「自己和自己对话」。
-
----
-
-## 交互示意
-
-Voice Bar 常驻在输入区右侧（`conversation.input.right`）：
-
-```text
-┌───────────────────────────────────────────────────────────────┐
-│ 🎙 长语音   ⏸   ➤发送   🔊朗读   ■停止    ▁▂▅▇▃▂   正在聆听   │
-└───────────────────────────────────────────────────────────────┘
-```
-
-Voice Draft 面板可随时展开（`conversation.input.dock`）：
-
-```text
-Voice Draft ───────────────────────────────────────────────
-今天我们讨论一下 DSH 的语音插件。
-我觉得它首先应该支持长时间监听……
-                     ↑ Partial Result（流式中，尚未进入正式草稿）
-───────────────────────────────────────────────────────────
-[撤销] [清空] [润色] [发送]
-```
-
-状态提示（需求 §23.3）：未开启 / 正在监听 / 检测到语音 / 正在识别 / 等待继续说话 / 正在润色 / 正在发送 / 正在朗读 / 已暂停 / 正在重连 / 错误。
-
----
+语音对话、识别后自动发送、声学唤醒、完整 AEC 和真实波形本期延期。
 
 ## 安装
 
-环境要求：**Node.js 20+**、可执行的 `dsh`。
+需要目标 Desktop 及官方语音 Bundle 五个包均为 0.2.0-rc.2，配置来源和版本不匹配时增强停止，设置卡保留诊断。Chatty 的组合 patch 停用官方录音 UI，保留服务及模型管理；卸载 Chatty 组合后官方入口由其 Bundle 自动恢复，已有 Profile 显式 disabled 覆盖应由用户检查。
 
-```powershell
-# 安装到 web profile（路径替换为本仓库所在目录）
-dsh plugin --profile web add F:\irving-dsh-plugins\dsh-chatty
+正式安装使用固定 GitHub repo URL，仓库已提交 lib/index.js、lib/client.js 和 patch，正常安装无需现场编译，也不需要 tgz。**以下 ref 是待发布目标，当前不能用于安装：**
 
-# 重启 DSH Web 后刷新浏览器
-dsh web
-```
+`git+https://github.com/irvingzhang0512/dsh-chatty.git#v0.2.0-rc.2+chatty.1`
 
-安装为 profile bundle 时会自动应用 [cordis.patch.yml](cordis.patch.yml)。该文件里的包名 `@irvingzhang0512/dsh-chatty` **不可改成短名**：浏览器 bundle 按 loader 入口名解析，改名会让 UI 半边静默失效。
+发布后先用根 tools/desktop-plugin-source.mjs 核对固定 ref、完整 commit 和精确组合，再使用 Desktop 自带插件 CLI 的 add；同一 Bundle 下按 Chatty 整数修订比较。详见 [安装与版本](docs/INSTALL.md)。
 
----
+## 第一次使用
 
-## 配置与凭据约定
+1. 在“插件 → Chatty → 语音输入与朗读”打开五标签设置卡。
+2. 选识别服务、语言；本地服务点击“准备模型”，云端配置凭据引用并打开“管理 DSH 凭据”保存到原生 Credentials。已有密钥不会显示。
+3. 打开会话，点击听写按钮并授予麦克风权限。说完一句后停顿，识别文字进入原生输入框。
+4. 检查正文后点击原生发送；听写可继续。点击停止收尾，dock 的取消会丢弃本次未完成结果。
+5. 需要朗读时点朗读按钮；自动朗读在语音输出中单独启用，单独朗读不自动开麦。
 
-- **API Key 只存 DSH Credentials**，插件配置里只写 **credential 引用名**，禁止把真实密钥写进项目配置文件或 `cordis.patch.yml`。
-- 约定的凭据名（DSH Credentials 的引用名只接受 `[A-Za-z_][A-Za-z0-9_]*`，所以规范形式是大写 + 下划线）：
+## 配置与迁移
 
-  | 规范凭据名 | 用途 |
-  |---|---|
-  | `VOLCANO_SPEECH` | 火山引擎语音（STT / TTS）Access Token |
-  | `VOLCANO_SPEECH_APPID` | 火山引擎语音的 App ID |
-  | `SILICONFLOW` | 硅基流动 API Key（STT / TTS） |
+语音输入、语音输出、指令与草稿、界面、高级保持原布局。每项支持修改、保存、重新加载和恢复组装默认值；保存按所有者反馈，失败项保留待保存值。官方普通参数重载前须停止语音任务。
 
-- 配置里写连字符（`volcano-speech` / `volcano-speech-appid` / `siliconflow`）也能用：宿主会归一化成同一个引用；**但 DSH Credentials 里保存的名字必须是 `VOLCANO_SPEECH` 这种形式**，环境变量兜底也按归一化后的大写名（`process.env.VOLCANO_SPEECH`）查。归一化规则见 [lib/credential-name.js](lib/credential-name.js)。
-- 密钥只在**宿主半边**经 `ctx.credentials` 解析，绝不下发浏览器。
-- STT 与 TTS 可以选择不同的 Provider、各自配置 Model / Voice；注意 `stt.credential` 的默认值固定是 `VOLCANO_SPEECH`，切到硅基流动时要显式改成 `SILICONFLOW`。
+旧配置首次加载会阻止增强启动；在高级中预览迁移、逐项选择冲突、备份后应用。保留未知字段和独立自动朗读，清理旧自动发送和占位项；备份恢复有并发检查。详见 [全配置表](docs/CONFIG-UI.md) 和 [迁移表](docs/CONFIG-LEGACY.md)。
 
-最小配置示例（完整字段见 [docs/CONFIG.md](docs/CONFIG.md)）：
+## 常见问题
 
-```yaml
-stt:
-  provider: volcano
-  credential: VOLCANO_SPEECH
+**为什么停顿没有发送？** 停顿只结束一句。发送仅来自明确按钮、原生提交或启用的整句发送口令。
 
-tts:
-  provider: siliconflow
-  credential: SILICONFLOW
-  auto_read: false
-```
+**为什么识别文字留在下方？** 识别等待期间正文发生了手动变化。Chatty 保留结果，避免覆盖手写内容；选择插入或丢弃即可。
 
----
+**为什么本地没有临时预览？** 本地和硅基流动采用分句识别；火山真实流式才提供临时结果。
 
-## V1 范围
+**为什么无法开始？** 先看设置卡的实际／目标版本、迁移提示、本地准备状态和凭据配置状态。
 
-V1 实现（需求 §25）：麦克风录音、Push-to-Talk、Continuous Listening、本地 VAD、Pre-roll Buffer、Streaming / Batch STT Provider 抽象、火山 STT、硅基流动 STT、Voice Draft、Partial / Final Result、发送 / 撤销 / 清空 / 取消 / 润色、Voice Bar、音频 Waveform / 音量条、TTS Provider 抽象、火山 TTS、硅基流动 TTS、手动朗读、自动朗读、Speech Renderer、Code Skip、Table Summary、Speech Buffer、Speech Queue、Stop / Interrupt、DSH Credentials 集成、Provider / Model / Voice / VAD / TTS 配置。
+## 开发与文档
 
-**V1 暂不实现**（需求 §26，接口预留但不实现）：
+[PRD](docs/PRD.md) · [当前 SPEC](docs/SPEC.md) · [架构](docs/ARCHITECTURE.md) · [配置](docs/CONFIG.md) · [Desktop 开发](docs/DEVELOPMENT.md) · [验收](docs/VERIFICATION-0.2.0-rc.2+chatty.1.md)
 
-- 完整 Wake Word Engine
-- Acoustic Echo Cancellation（AEC）
-- 真正 Full Duplex
-- Speech-to-Speech 大模型
-- 多人声源区分
-- Speaker Identification
-- 本地 STT 大模型
-- 本地 TTS 大模型
-
-V1 对「避免 TTS 被 STT 再识别」采用简化策略：TTS 播放期间不提交远程识别，但保留本地 VAD 用于判断用户是否想打断（需求 §21）。
-
----
-
-## 目录结构
-
-```text
-dsh-chatty/
-├── docs/                 REQUIREMENTS.md ARCHITECTURE.md DESIGN.md CONFIG.md DEVELOPMENT.md CHANGELOG.md V1-COVERAGE.md
-├── lib/
-│   ├── index.js          插件入口（name / inject / Config / apply）+ /dsh-chatty/* 路由 + transcribe_audio 工具
-│   ├── config.js         schemastery Config 定义（配置字段与默认值的唯一权威）
-│   ├── credential-name.js 凭据引用名归一化（toCredentialRef）
-│   ├── draft.js          Voice Draft 领域模型
-│   ├── command-parser.js 语音指令解析
-│   ├── reply-adapter.js  DSH session 事件 → 语音流水线事件
-│   ├── http-util.js      writeJson / readBody / isTrustedCaller / SSE 工具
-│   ├── audio.js          wav/pcm 工具、格式探测
-│   ├── polish.js         DSH LLM 润色 + 语音摘要
-│   ├── pipeline.js       每会话语音流水线（buffer → renderer → queue）
-│   ├── ws-client.js      自带的最小 RFC6455 WebSocket 客户端（火山流式 STT 需要自定义认证头）
-│   ├── speech/           renderer.js buffer.js queue.js
-│   ├── stt/              providers.js volcano.js siliconflow.js pseudo-stream.js
-│   ├── tts/              providers.js volcano.js siliconflow.js
-│   └── client-src/       浏览器半边片段（00-open 10-locale 20-css 30-core 40-audio 45-stt 50-draft 55-tts 60-ui 70-settings 90-close）
-├── scripts/              build-client.mjs lint.mjs
-└── test/                 node --test 单测（client-bundle / core / host / pipeline / speech / stt / tts / ws-client）
-```
-
-宿主 HTTP 路由统一挂在 `/dsh-chatty/` 前缀下（`/status`、`/config-info`、`/draft`、`/draft/polish`、`/stt/*`、`/tts/*`、`/speech/*`），另注册 `transcribe_audio` 工具。完整路由表见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 第 3 节。
-
----
-
-## 常用命令
-
-```bash
-npm test                 # 重建 lib/client.js 并运行 node --test 单测（pretest 自动构建）
-npm run build:client     # 由 lib/client-src/ 片段拼接生成 lib/client.js
-npm run lint             # ESM 语法检查 + 片段/生成物结构检查
-```
-
-本仓库**不引入任何运行时 npm 依赖**，因此单测无需 `npm install` 即可运行：宿主依赖全部通过 `peerDependencies` 提供，只有 `lib/index.js` 会 import 它们，而 `test/host.test.mjs` 在 peer 依赖缺失时**整体 skip**，`npm test` 仍然全绿。详见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
-
----
-
-## 文档
-
-| 文件 | 内容 |
-|---|---|
-| [docs/PRD.md](docs/PRD.md) | 新版产品审阅稿：现有功能、官方基础／Chatty 增强分工、流程、范围与验收 |
-| [docs/SPEC.md](docs/SPEC.md) | 按稳定功能编号维护预期、实现差异、验收及确认状态 |
-| [docs/CONFIG-UI.md](docs/CONFIG-UI.md) | 官方配置基线、固定行为、当前 UI 入口及增强功能设计讨论 |
-| [docs/CONFIG-LEGACY.md](docs/CONFIG-LEGACY.md) | 旧 Chatty 72 项源码调查，仅供迁移和有效引用核对 |
-| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | 需求说明书全文（项目目标、架构、V1 范围、后续阶段） |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 模块契约：导出名、数据形状、HTTP 路由、浏览器半边约定 |
-| [docs/DESIGN.md](docs/DESIGN.md) | 设计说明：核心中间对象、数据流、状态机、关键取舍 |
-| [docs/CONFIG.md](docs/CONFIG.md) | 完整配置参考与凭据约定 |
-| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | 开发流程、目录职责、新增 Provider、测试约定、常见坑 |
-| [docs/V1-COVERAGE.md](docs/V1-COVERAGE.md) | 需求 §25 的 V1 能力逐项对照到实现文件与验证方式 |
-| [docs/CHANGELOG.md](docs/CHANGELOG.md) | 变更记录（Keep a Changelog） |
-| [AGENTS.md](AGENTS.md) | 仓库协作约定（中文交流、提交规范、开发红线） |
-
-## License
-
-MIT © 2026 irvingzhang0512
+原始 [REQUIREMENTS](docs/REQUIREMENTS.md) 只读保留历史，当前行为以上述 v5 规格为准。零新增第三方运行时依赖，官方 peer 来自目标宿主。

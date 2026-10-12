@@ -27,7 +27,7 @@ for (const f of files) {
 // 内联宿主纯模块（去掉 export 前缀），让浏览器半边与宿主共享同一实现：
 //   - composer-text.js  听写直写的追加/回退逻辑
 //   - command-parser.js 语音指令判定（整句匹配 / 唤醒前缀）
-for (const hostFile of ['lib/composer-text.js', 'lib/command-parser.js']) {
+for (const hostFile of ['lib/composer-text.js', 'lib/command-parser.js', 'lib/draft-ledger.js']) {
   const body = await readFile(path.join(root, hostFile), 'utf8')
   const stripped = body
     .replace(/^export function /gm, 'function ')
@@ -38,4 +38,4 @@ for (const hostFile of ['lib/composer-text.js', 'lib/command-parser.js']) {
   if (!out.endsWith('\n')) out += '\n'
 }
 await writeFile(outFile, out, 'utf8')
-console.log(`built lib/client.js from ${files.length} fragments + 2 inlined host modules (${out.length} bytes)`)
+console.log(`built lib/client.js from ${files.length} fragments + 3 inlined host modules (${out.length} bytes)`)

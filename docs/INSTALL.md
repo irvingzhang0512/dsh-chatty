@@ -1,0 +1,15 @@
+# 固定 Git 来源安装与版本
+
+版本：0.2.0-rc.2+chatty.1；Desktop／Bundle／四个子包精确 0.2.0-rc.2。当前正式 tag 尚未公开，下面是待发布安装说明，不代表公网安装已通过。
+
+正式 repo URL：git+https://github.com/irvingzhang0512/dsh-chatty.git#v0.2.0-rc.2+chatty.1，或发布后的完整 40 位 commit。禁止用 main、浮动 latest 或缩写 SHA 作为固定来源。
+
+1. 正常退出待维护的 Desktop 实例（含托盘宿主），备份其 Profile 配置／manifest／lock；先在隔离 profile 执行。
+2. 使用根 tools/desktop-plugin-source.mjs --source <固定URL> --actual <实际组合JSON> 只读预检。检查清单、五包、产物和无现场构建生命周期，得到完整 commit；可传 --installed-version 检查同基线整数修订。
+3. 使用安装包自带的 dsh-desktop-host CLI／pnpm 在目标 DSH_HOME 的 desktop profile 执行 plugin add <固定URL>。不要用全局 dsh 或历史 Web 安装脚本。
+4. 检查插件来源／解析提交、实际版本与设置卡诊断，再启动原生窗口验收。Git 源码获取不依赖发布 tgz；官方 peers 仍由实际 profile 包管理器正确组装。
+5. 更新与回退都重复预检、冷安装和来源记录；回退允许较小整数修订，跨 Bundle 基线需另准备完整固定组合。官方安装拒绝时检查 manifest／lock 恢复结果及残留下载目录，不能放宽 peer。
+
+当前构建产物已追踪，无 prepare／install／postinstall，发布检查改为显式 release:check，没有 prepack 生命周期；实际 Git 生命周期由隔离 pnpm 验证，不能仅凭字段名推导成功。公开 URL 安装必须在发布后单列通过。
+
+日常安装授权、发布授权不由本次隔离开发自动扩大；旧根版本锁保持原组合，新版只在独立 Desktop 候选记录。

@@ -183,7 +183,7 @@ test('STT_PROVIDER_KEYS 与 STT_DEFAULTS 符合契约 §2.6', () => {
   assert.equal(volcano.credential, 'VOLCENGINE_AGENT_PLAN_API_KEY')
   assert.equal(volcano.model, 'doubao-seed-asr-2.0')
   assert.equal(volcano.baseUrl, '')
-  assert.equal(volcano.streamUrl, 'wss://openspeech.bytedance.com/api/v3/plan/sauc/bigmodel_nostream')
+  assert.equal(volcano.streamUrl, 'wss://openspeech.bytedance.com/api/v3/plan/sauc/bigmodel_async')
   assert.equal(volcano.resourceId, 'volc.seedasr.sauc.duration')
   assert.equal(volcano.language, 'zh-CN')
 
@@ -214,7 +214,7 @@ test('sttCapability 返回契约规定的形状', () => {
   assert.equal(siliconflow.streaming, false)
   assert.equal(siliconflow.batch, true)
   assert.equal(siliconflow.timestamps, false)
-  assert.equal(siliconflow.partialResult, true)
+  assert.equal(siliconflow.partialResult, false)
 
   // 返回的是副本，改动不会污染内部状态
   volcano.languages.push('xx')
@@ -407,7 +407,7 @@ test('火山协议：full client request 帧编码（gzip + JSON + sequence=1）
   assert.equal(decoded.json.audio.bits, 16)
   assert.equal(decoded.json.audio.channel, 1)
   assert.equal(decoded.json.audio.language, undefined) // 中文不传 language
-  assert.equal(decoded.json.request.model_name, 'doubao-seed-asr-2.0')
+  assert.equal(decoded.json.request.model_name, 'bigmodel')
   assert.equal(decoded.json.request.show_utterances, true)
 
   const english = decodeClientFrame(buildFullClientRequest({ language: 'en-US', sampleRate: 16000 }))
@@ -542,7 +542,7 @@ test('火山流式：open → pushAudio → stop 收到 partial 与 final', asyn
 
   const full = decodeClientFrame(socket.sent[0])
   assert.equal(full.type, VOLCANO_MESSAGE_TYPE.FULL_CLIENT_REQUEST)
-  assert.equal(full.json.request.model_name, STT_DEFAULTS.volcano.model)
+  assert.equal(full.json.request.model_name, 'bigmodel')
   assert.equal(full.json.audio.rate, 16000)
 
   const bufferedFrame = decodeClientFrame(socket.sent[1])
@@ -686,6 +686,7 @@ test('火山 plan：transcribe 复用流式会话（不发 HTTP，经假 WS 等 
   socket.emit('open')
 
   // 应发出 full client request 与（含 LAST 标志的）音频帧，全程不发 HTTP
+  await tick() // stop 等待真实握手完成后才发送终帧
   const sentFrames = socket.sent.map((frame) => decodeClientFrame(frame))
   assert.ok(sentFrames.some((frame) => frame.type === VOLCANO_MESSAGE_TYPE.FULL_CLIENT_REQUEST))
   assert.ok(sentFrames.some((frame) => frame.flags & VOLCANO_FRAME_FLAG.LAST), 'stop 应补发最后一帧')

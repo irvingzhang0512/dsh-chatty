@@ -1,87 +1,112 @@
-# 官方配置与 Chatty 增强设计
+# 全配置 UI 与验收映射
 
-文档版：`native-voice-enhancement-20261013-v4`；2026-10-13；状态：官方基线已静态核对，持续听写／语音对话延期的范围已明确，其余增强参数待讨论／确认。
+版本 native-voice-enhancement-20261013-v5；当前官方 26 项＋Chatty 74 项，共 100。来自实际 Desktop 0.2.0-rc.2 的四个配置所有者，记录控件、保存所有者、生效时机和逐项验收。UI 使用实时 schema，不复制维护上游默认；表中未指定表示继承／可选。
 
-本期以持续听写累计草稿、显式发送为主；不提供语音对话入口或识别结束自动发送开关。旧 `draft.auto_send` 和 voiceChat 相关路径需在实施时迁移／停用，当前代码尚未修改；独立手动／自动朗读设置保持。
+现有五标签保留。每项旁边“默认”清除显式覆盖；保存按所有者逐项反馈，重新加载读回全部值。模型准备／取消、麦克风测试、试听、凭据原生管理、迁移预览和备份恢复仍在当前卡。不可用能力不提供占位控件。
 
-本表承接 [PRD](PRD.md) 和 [CONFIG](CONFIG.md)。按用户最新要求，先以当前官方语音 Bundle 0.2.0-rc.2 的配置和固定行为为基础；官方未支持的功能另行设计。现有 Chatty 只作为界面与实现参考，旧 72 项字段移到 [迁移核对表](CONFIG-LEGACY.md)，不作为新版必须继承的配置清单。
+| 保存所有者 | 字段 | 控件／标签 | schema 或组装默认 | 生效 | 验收 |
+|---|---|---|---|---|---|
+| chatty | `stt.providers.volcano.model` | 文本／可选文本／语音输入 | "doubao-seed-asr-2.0" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `stt.providers.volcano.credential` | 文本／可选文本／语音输入 | "VOLCENGINE_AGENT_PLAN_API_KEY" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `stt.providers.volcano.batch_url` | 文本／可选文本／高级 | "wss://openspeech.bytedance.com/api/v3/plan/sauc/bigmodel_nostream" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `stt.providers.volcano.stream_url` | 文本／可选文本／高级 | "wss://openspeech.bytedance.com/api/v3/plan/sauc/bigmodel_async" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `stt.providers.volcano.resource_id` | 文本／可选文本／高级 | "volc.seedasr.sauc.duration" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `stt.providers.siliconflow.model` | 文本／可选文本／语音输入 | "FunAudioLLM/SenseVoiceSmall" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `stt.providers.siliconflow.credential` | 文本／可选文本／语音输入 | "SILICONFLOW_API_KEY" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `stt.providers.siliconflow.base_url` | 文本／可选文本／高级 | "https://api.siliconflow.cn/v1" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `stt.max_segment_seconds` | 数字／高级 | 30 | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `stt.max_pending` | 数字／高级 | 4 | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `stt.stream_idle_timeout_ms` | 数字／高级 | 15000 | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `stt.streaming` | 开关／语音输入 | true | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `stt.auto_start` | 开关／语音输入 | false | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `stt.partial_preview` | 开关／语音输入 | true | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `stt.vad.enabled` | 开关／语音输入 | true | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `stt.vad.sensitivity` | 数字／语音输入 | 0.6 | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `stt.vad.silence_timeout_ms` | 数字／语音输入 | 1200 | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `stt.vad.min_speech_ms` | 数字／语音输入 | 200 | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `stt.vad.pre_roll_ms` | 数字／语音输入 | 400 | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.provider` | 选择／语音输出 | "volcano" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.providers.volcano.voice` | 文本／可选文本／语音输出 | "zh_female_shuangkuaisisi_uranus_bigtts" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.providers.volcano.credential` | 文本／可选文本／语音输出 | "VOLCENGINE_AGENT_PLAN_API_KEY" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.providers.volcano.base_url` | 文本／可选文本／高级 | "https://openspeech.bytedance.com/api/v3/plan/tts/unidirectional" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.providers.volcano.resource_id` | 文本／可选文本／高级 | "seed-tts-2.0" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.providers.siliconflow.model` | 文本／可选文本／语音输出 | "FunAudioLLM/CosyVoice2-0.5B" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.providers.siliconflow.voice` | 文本／可选文本／语音输出 | "FunAudioLLM/CosyVoice2-0.5B:alex" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.providers.siliconflow.credential` | 文本／可选文本／语音输出 | "SILICONFLOW_API_KEY" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.providers.siliconflow.base_url` | 文本／可选文本／高级 | "https://api.siliconflow.cn/v1" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.speed` | 数字／语音输出 | 1 | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.format` | 选择／语音输出 | "pcm" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.sample_rate` | 选择／高级 | 24000 | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.volume` | 数字／语音输出 | 1 | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.auto_read` | 开关／语音输出 | false | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.interrupt_on_speech` | 开关／语音输出 | true | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.code_hint` | 开关／语音输出 | true | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.llm_summary` | 开关／语音输出 | false | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.summary_prompt` | 文本／可选文本／语音输出 | "" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.max_chars` | 数字／高级 | 4000 | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.renderer.paragraph` | 选择／语音输出 | "read" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.renderer.heading` | 选择／语音输出 | "read" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.renderer.list` | 选择／语音输出 | "smart" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.renderer.table` | 选择／语音输出 | "summarize" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.renderer.code_block` | 选择／语音输出 | "skip" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.renderer.inline_code` | 选择／语音输出 | "smart" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.renderer.mermaid` | 选择／语音输出 | "skip" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.renderer.ascii_diagram` | 选择／语音输出 | "skip" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.renderer.url` | 选择／高级 | "label_only" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.renderer.image` | 选择／语音输出 | "skip" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.renderer.math_block` | 选择／语音输出 | "skip" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.renderer.tool_log` | 选择／语音输出 | "skip" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `tts.renderer.blockquote` | 选择／语音输出 | "read" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `voice_control.enabled` | 开关／指令与草稿 | true | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `voice_control.command_mode` | 选择／指令与草稿 | "exact" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `voice_control.wake_prefix` | 文本／可选文本／指令与草稿 | "DSH" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `voice_control.wake_words` | 逐行列表／指令与草稿 | [] | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `voice_control.commands` | 七动作逐行词表／指令与草稿 | {"send":["发送","提交","发送消息","send","submit"],"undo":["撤销","重说","撤回","undo"],"clear":["清空","清除","clear"],"polish":["润色","整理一下","polish"],"stop_listening":["停止录音","停止监听","结束监听","stop listening"],"read":["朗读","读一下","read"],"stop_reading":["停止朗读","别读了","stop reading"]} | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `draft.max_utterances` | 数字／指令与草稿 | 200 | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `draft.separator` | 文本／可选文本／指令与草稿 | "\n" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `draft.polish_on_command` | 开关／指令与草稿 | true | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `polish.enabled` | 开关／指令与草稿 | true | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `polish.prompt` | 文本／可选文本／高级 | "" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `polish.provider` | 文本／可选文本／高级 | "" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `polish.model_id` | 文本／可选文本／高级 | "" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `polish.base_url` | 文本／可选文本／高级 | "" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `polish.key_env` | 文本／可选文本／高级 | "" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `ui.show_voice_bar` | 开关／界面 | true | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `ui.show_draft_panel` | 开关／界面 | true | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `ui.visualizer` | 选择／界面 | "bars" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `ui.panel_width` | 数字／界面 | 720 | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `timeout_ms` | 数字／高级 | 120000 | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `mic_device_id` | 设备选择／语音输入 | "" | 下次任务（下次开麦） | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `noise_suppression` | 开关／语音输入 | true | 下次任务（下次开麦） | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `echo_cancellation` | 开关／语音输入 | true | 下次任务（下次开麦） | 非默认保存、刷新读回、恢复、并发拒绝 |
+| chatty | `auto_gain_control` | 开关／语音输入 | true | 下次任务（下次开麦） | 非默认保存、刷新读回、恢复、并发拒绝 |
+| speech | `defaultProvider` | 选择／语音输入 | "sensevoice-local" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| speech | `language` | 选择／语音输入 | "auto" | 下次任务 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| api | `maxAudioBytes` | 数字／高级 | 4194304 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| api | `maxDurationSeconds` | 数字／高级 | 120 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `providerId` | 文本／可选文本／高级 | "sensevoice-local" | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `dataRoot` | 文本／可选文本／高级 | 组装时 DSH_HOME/speech-to-text/sensevoice | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `modelDirectory` | 文本／可选文本／高级 | 未指定 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `vadModelPath` | 文本／可选文本／高级 | 未指定 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `precision` | 选择／高级 | "int8" | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `modelOrigin` | 文本／可选文本／高级 | 未指定 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `modelOrigins` | 逐行列表／高级 | ["https://huggingface.co","https://hf-mirror.com"] | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `modelProbeTimeoutMs` | 数字／高级 | 3000 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `threads` | 数字／高级 | 2 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `segmentSeconds` | 数字／高级 | 30 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `vadThreshold` | 数字／高级 | 0.5 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `minSpeechSeconds` | 数字／高级 | 0.25 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `minSilenceSeconds` | 数字／高级 | 0.5 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `maxAudioBytes` | 数字／高级 | 4194304 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `prepareTimeoutMs` | 数字／高级 | 3600000 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `inferenceTimeoutMs` | 数字／高级 | 120000 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `idleTimeoutMs` | 数字／高级 | 300000 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `maxPending` | 数字／高级 | 4 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `graceMs` | 数字／高级 | 1000 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `maxLogBytes` | 数字／高级 | 65536 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `maxResponseBytes` | 数字／高级 | 131072 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
+| sensevoice | `progressIntervalMs` | 数字／高级 | 100 | 重载所有者 | 非默认保存、刷新读回、恢复、并发拒绝 |
 
-## 1. 官方能力与配置来源
+官方普通字段重载需要停止语音任务，Provider ID 更名同步官方当前默认选择并备份。麦克风设备及降噪等采集约束下次开麦生效，VAD 在下一句边界生效；识别任务固定选定 Provider／语言，上限服从官方 API 与本地限制。Credentials 只保存引用和值到原生服务，不把已有密钥放入配置或回显。
 
-| 官方模块 | 配置数量／作用 | 当前 UI 与 Chatty 优化 |
-|---|---|---|
-| speech-to-text | 2 项：识别服务、语言 | 官方已有选择入口；在当前 Chatty 设置卡读取／写入同一份偏好 |
-| api-speech-to-text | 2 项：录音字节、时长上限 | 官方 UI 未提供这些控件；Chatty 在现有高级标签补入口 |
-| speech-to-text-sensevoice | 22 项：本地资源、推理、VAD、队列与生命周期 | 复用原 Provider 与缓存；将原文件配置逐项放入当前卡 |
-| client-ui-voice-input | 当前版本无独立 YAML 配置 | 录音／取消／停止、版本化草稿插入等是基础行为；Chatty 参考行为，沿用自己的按钮和 dock |
-| voice-input-bundle | 组合包，不另有一组识别参数 | 按整个 Bundle 的精确版本匹配四个子包，不复制配置 |
-
-识别服务、语言、录音上限及本地模型参数是官方配置；停止／取消、识别后的草稿冲突处理等是固定行为，不能为“全部上 UI”凭空新增一个官方不存在的开关。官方默认识别服务由 Bundle 选 sensevoice-local，语言 auto；API 默认 4 MiB、120 秒；本地默认 int8、2 线程。实际用户覆盖值仍从各自条目读取。
-
-输入设备选择与 vadOnsetPaddingSeconds 属于参考 0.2.1 线的新增能力，不能登记为本机 0.2.0-rc.2 已有配置。Chatty 设备设置若需在当前版本提供，归入下面的增强设计。
-
-## 2. 官方配置 26 项及当前 Chatty 入口
-
-
-以下参数仍由官方三个条目持久化。Chatty 在现有卡里提供入口；不把调研版 0.2.1 的 `vadOnsetPaddingSeconds` 放进本机 0.2.0-rc.2 的有效配置。
-
-| 条目与字段 | 中文控件／目标入口 | 生效与引用要求 |
-|---|---|---|
-| `speech-to-text.defaultProvider` | 识别服务／语音输入 | 与旧 stt.provider 迁移合并；下次录音选择 |
-| `speech-to-text.language` | 识别语言／语音输入 | 与旧 stt.language 合并；按所选 Provider 校验 |
-| `api-speech-to-text.maxAudioBytes` | 完整录音字节上限／高级·限制 | 显示单位与有效上限；保存后需服务生效 |
-| `api-speech-to-text.maxDurationSeconds` | 完整录音秒数上限／高级·限制 | 与请求超时分开；保存后需服务生效 |
-| `speech-to-text-sensevoice.providerId` | 本地识别注册 ID／高级·本地识别 | 改名需同时处理默认选择与全部引用 |
-| `speech-to-text-sensevoice.dataRoot` | 本地缓存目录／高级·本地模型 | 文本／目录选择；重挂载生效，不能默默移动已有模型 |
-| `speech-to-text-sensevoice.modelDirectory` | 外部识别模型目录／高级·本地模型 | 可清空回默认托管模式；核对资源要求 |
-| `speech-to-text-sensevoice.vadModelPath` | 外部 VAD 模型文件／高级·本地模型 | 可清空回默认托管模式；核对资源要求 |
-| `speech-to-text-sensevoice.precision` | int8／fp32 精度／语音输入·本地识别 | 切换涉及资源准备与 Provider 重载 |
-| `speech-to-text-sensevoice.modelOrigin` | 固定模型来源／高级·模型来源 | 可选来源；清空使用来源列表策略 |
-| `speech-to-text-sensevoice.modelOrigins` | 模型来源列表／高级·模型来源 | 可增删来源，保留顺序；与任务临时选源分开 |
-| `speech-to-text-sensevoice.modelProbeTimeoutMs` | 来源探测超时／高级·模型来源 | 数值及单位；按上游校验 |
-| `speech-to-text-sensevoice.threads` | CPU 线程／高级·本地运行 | 数值；上游不支持即时更改时提示重载 |
-| `speech-to-text-sensevoice.segmentSeconds` | 本地识别分段秒数／高级·本地运行 | 与浏览器静音分句、整体音频上限区分 |
-| `speech-to-text-sensevoice.vadThreshold` | 模型 VAD 阈值／高级·本地运行 | 与 Chatty 浏览器分句灵敏度区分 |
-| `speech-to-text-sensevoice.minSpeechSeconds` | 模型最短人声秒数／高级·本地运行 | 数值及单位 |
-| `speech-to-text-sensevoice.minSilenceSeconds` | 模型最短静音秒数／高级·本地运行 | 数值及单位 |
-| `speech-to-text-sensevoice.maxAudioBytes` | 本地 Provider 音频字节上限／高级·限制 | 与 API 上限共同决定实际可接收大小，不混写 |
-| `speech-to-text-sensevoice.prepareTimeoutMs` | 本地准备超时／高级·本地运行 | 与请求／推理超时区分 |
-| `speech-to-text-sensevoice.inferenceTimeoutMs` | 本地推理超时／高级·本地运行 | 数值及单位 |
-| `speech-to-text-sensevoice.idleTimeoutMs` | 空闲释放时间／高级·本地运行 | 支持上游允许的 0 值语义 |
-| `speech-to-text-sensevoice.maxPending` | 本地排队上限／高级·本地运行 | 与浏览器扩展积压上限区分 |
-| `speech-to-text-sensevoice.graceMs` | 工作进程退出宽限／高级·本地运行 | 数值及单位 |
-| `speech-to-text-sensevoice.maxLogBytes` | 本地诊断日志上限／高级·本地运行 | 数值及单位，日志仍不可含密钥 |
-| `speech-to-text-sensevoice.maxResponseBytes` | 工作进程响应上限／高级·本地运行 | 数值及单位 |
-| `speech-to-text-sensevoice.progressIntervalMs` | 准备进度刷新间隔／高级·本地运行 | 数值及单位 |
-
-准备状态、下载并准备、取消准备和本次下载源选择放在“语音输入”已有卡内的本地识别区域；本次下载源是任务选项，不冒充永久配置。版本／兼容状态为只读事实，展示在当前卡头部或现有高级区域，不提供手填已安装版本的控件。
-
-## 3. 官方未支持的功能：增强设计讨论稿
-
-下列为产品行为与逻辑设置建议，尚未全部固定字段名／默认值。全部在现有 Chatty 的五标签设置卡、听写／朗读按钮与 dock 内实现，对话按钮本期不展示；沿用现有代码仍需验证，不把旧开关直接复制。
-
-| 增强能力 | 官方边界 | 建议配置与交互 | 需要一起确定 |
-|---|---|---|---|
-| 持续听写 | 完整录音，停止后识别；没有常开麦克风 | 本期听写入口采用持续方式；浏览器分句灵敏度、静音时长、最短人声和句首缓冲；静音只结束句子，手动停止收尾 | 显式开始、累计草稿与显式发送已明确；启动即监听是否保留另行讨论，默认不开启 |
-| 云端识别 | 注册表可扩展，但 Bundle 仅带本地 Provider | 在同一服务列表注册火山／硅基流动；各自模型、凭据引用、端点、资源参数随所选服务显示 | 两家适配与语言枚举的目标契约，保留哪些可覆盖参数 |
-| 流式预览 | 官方没有 streaming／partial 接口 | 按真实能力启用预览；无能力时仅显示识别中；若保留快照伪流式，说明其含义与调用开销 | 火山当前端点是否实际提供 partial；是否保留伪流式 |
-| 语音口令 | 官方不解析发送／撤销等命令 | 开关、整句／文字前缀模式、前缀、7 类动作词表；只消费 final，命令先于正文插入 | 默认采用整句还是前缀；修改词表时如何处理重复／歧义 |
-| 草稿编辑与发送 | 官方安全插入、普通手动提交，没有增强策略配置 | 分段操作记录、仅语音撤销／清空、分隔方式、显式发送后清记录；正文唯一，冲突结果在 dock 处理；无自动发送开关 | 发送为点击／已启用的发送口令；撤销失去追踪的处理仍需固定 |
-| 润色 | 官方不调用模型整理草稿 | 手动／口令触发、语音文本范围、跟随当前模型／固定模型、提示词、兼容端点与凭据引用 | 默认作用于语音区间；冲突后保留结果供显式插入 |
-| 回复朗读 | 官方无 TTS 或回复内容整理 | 两家 TTS、模型／音色／速度／音量／格式／采样率、手动／自动、打断；内容预设加高级逐类策略，摘要可选模型 | 表格／长列表先用规则还是模型摘要；打断策略的真人验证 |
-| 语音对话 | 官方不自动发送，也不播放助手回复 | 用户明确本期延期；不展示按钮、不恢复模式、不设计自动提交队列 | 后续另行确认，本期不纳入 |
-| 录音设备与界面 | 当前官方无设备配置项；界面规则固定 | 沿用当前设备选择／浏览器音频参数、按钮栏／dock 显示、预览、音量柱和宽度 | 所选设备不可用时反馈；wave 未实现，F010 单独确认 |
-
-浏览器分句与官方 SenseVoice VAD 分属采集与识别两个阶段，不能把灵敏度、静音时长、segmentSeconds 当成同一个设置重复展示。完整录音的限制沿用官方参数；仅为 Chatty 流式或本地暂存新增必要的请求／队列限制，不再复制一组同义上限。
-
-本期已明确持续听写与显式提交，语音对话延期。下一步固定口令默认匹配方式、分句参数、草稿／润色冲突和独立朗读策略；字段、默认值、校验、UI 与迁移映射随后成套确认。不因保留旧模式代码就恢复其按钮或自动提交。
-
-## 4. 所有有效配置的 UI 要求
-
-- 现有设置卡保留语音输入、语音输出、指令与草稿、界面、高级五个标签；官方高级参数和增强字段按用途在卡内展开，不新增页面。
-- 官方 26 项逐一有入口；增强功能最终选定的所有有效字段也必须可查看、编辑、校验、保存、重新加载和恢复组装默认值。数字标单位，可选路径／来源提供使用默认／自动。
-- 官方偏好及 Provider 参数写实际所有者，不复制到 Chatty；不同条目的保存结果分别反馈，进行中任务和需重挂载参数有明确作用时机与同卡操作。
-- 凭据只展示引用、状态和打开 DSH Credentials 的入口；模型准备、准备取消、任务临时选源以及版本事实分别呈现，不冒充永久配置。
-- 旧字段按 [CONFIG-LEGACY](CONFIG-LEGACY.md) 核对所有读写／导入／有效引用，确定保留、迁移或清理；未知字段保留。未实现占位不做虚假有效控件。
-
-本轮仅完成官方字段静态核对和增强建议。验收仍需逐项设置非默认值、保存后检查原持久文件、重新加载、验证作用时机、恢复默认，以及非法值／部分失败／迁移回滚的回归；没有执行新表单或真实录音验证。
+本期全字段实际非默认保存／读回／默认恢复与非法值／CAS 验收见 [验证记录](VERIFICATION-0.2.0-rc.2+chatty.1.md)。

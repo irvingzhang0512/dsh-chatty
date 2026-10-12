@@ -62,7 +62,7 @@ function readApiKey() {
 }
 
 const apiKey = readApiKey()
-console.log(`[1/3] 凭据 OK：${keyName} = ${apiKey.slice(0, 8)}…（共 ${apiKey.length} 字符）；鉴权组合：${authMode}`)
+console.log(`[1/3] 凭据 OK：${keyName}（已配置，不显示密钥）；鉴权组合：${authMode}`)
 console.log(`[2/3] 连接 ${url}`)
 
 // xapikey（默认，实测可用）：单一 X-Api-Key 头；其余组合保留用于排查。

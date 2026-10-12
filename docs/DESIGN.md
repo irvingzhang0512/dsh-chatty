@@ -1,3 +1,7 @@
+# 历史设计说明
+
+当前实现见 [SPEC](SPEC.md) 与 [架构](ARCHITECTURE.md)，下文保留早期方案，不代表现行字段／接口。
+
 # dsh-chatty 设计说明
 
 本文保留早期 V1 设计依据，尚未按当前直写缓冲和官方语音接入目标重写。新版产品流程见 [PRD](PRD.md)，当前源码差异见 [SPEC](SPEC.md)，目标所有权与待定接口见 [ARCHITECTURE](ARCHITECTURE.md)。不能将以下双草稿结构或旧 Provider 取舍视为新版已确认设计。

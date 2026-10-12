@@ -105,7 +105,7 @@ test('客户端 bundle：入口 id、inject 面与 slot 注册', async () => {
   })
   assert.equal(typeof mod.apply, 'function')
   // 注意：bundle 在 vm 里执行，数组来自另一个 realm，不能直接用 deepStrictEqual。
-  assert.equal(Array.from(mod.inject).join(','), 'timer,slots,settingsScope,locale,uiSession')
+  assert.equal(Array.from(mod.inject).join(','), 'timer,slots,configForms,locale')
 
   const harness = createClientHarness()
   mod.apply(harness.ctx)
@@ -114,9 +114,7 @@ test('客户端 bundle：入口 id、inject 面与 slot 注册', async () => {
   assert.deepEqual(names, [
     'conversation.input.dock',
     'conversation.input.right',
-    'plugins.item',
-    'plugins.row.config',
-    'settings.plugin.item',
+    'plugins.bundle.config',
   ])
   for (const slot of harness.slots) {
     assert.equal(typeof slot.component, 'function', `${slot.spec.name} 必须注册组件`)
@@ -144,7 +142,7 @@ test('客户端 bundle：Voice Bar 与 Draft 面板首次渲染不抛错', async
   const inputActions = { setDraft() {}, submit() {}, addAttachments: () => true, removeAttachment() {}, pruneAttachments() {} }
   const props = { sessionId: 's1', input: { draft: '' }, inputActions }
 
-  for (const name of ['conversation.input.right', 'conversation.input.dock', 'plugins.item']) {
+  for (const name of ['conversation.input.right', 'conversation.input.dock', 'plugins.bundle.config']) {
     const slot = harness.slots.find((item) => item.spec.name === name)
     assert.ok(slot, `缺少 slot ${name}`)
     const wrapper = slot.component(props)
@@ -164,7 +162,7 @@ test('客户端 bundle：Voice Bar 与 Draft 面板首次渲染不抛错', async
   )
 
   // 插件卡片的 summary 视图（Plugins 页面只用它渲染一行说明）。
-  const card = harness.slots.find((item) => item.spec.name === 'plugins.item')
+  const card = harness.slots.find((item) => item.spec.name === 'plugins.bundle.config')
   const summary = card.component({ ...props, view: 'summary' })
   assert.ok(summary !== undefined)
 })

@@ -196,7 +196,7 @@ test('HTTP 工具：来源可信校验与 JSON 解析', () => {
   assert.equal(isLoopback('10.0.0.5'), false)
   assert.equal(isTrustedCaller({ socket: { remoteAddress: '127.0.0.1' }, headers: {} }), true)
   assert.equal(isTrustedCaller({ socket: { remoteAddress: '10.0.0.5' }, headers: { origin: 'http://evil.test', host: 'local:3080' } }), false)
-  assert.equal(isTrustedCaller({ socket: { remoteAddress: '10.0.0.5' }, headers: { origin: 'http://local:3080', host: 'local:3080' } }), true)
+  assert.equal(isTrustedCaller({ socket: { remoteAddress: '10.0.0.5' }, headers: { origin: 'http://local:3080', host: 'local:3080' } }), false)
   assert.equal(isTrustedCaller(null), false)
   assert.deepEqual(parseJsonBody(Buffer.from('{"a":1}')), { a: 1 })
   assert.deepEqual(parseJsonBody(Buffer.from('not json')), {})

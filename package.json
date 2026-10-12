@@ -1,7 +1,7 @@
 {
   "name": "@irvingzhang0512/dsh-chatty",
-  "version": "0.1.0",
-  "description": "A voice interaction plugin for DeepSeek Harness, providing long-running speech input, voice commands, speech-friendly response rendering, and interruptible text-to-speech playback.",
+  "version": "0.2.0-rc.2+chatty.1",
+  "description": "基于官方语音 Bundle 的持续听写、语音口令、草稿润色与独立朗读增强。",
   "license": "MIT",
   "type": "module",
   "main": "./lib/index.js",
@@ -18,7 +18,9 @@
     "lib/tts/*.js",
     "cordis.patch.yml",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "compatibility.json",
+    "docs"
   ],
   "keywords": [
     "dsh",
@@ -39,7 +41,7 @@
     "test": "node --test test/*.test.mjs",
     "lint": "node scripts/lint.mjs",
     "link:peers": "node scripts/link-peer-deps.mjs",
-    "prepack": "node scripts/build-client.mjs && node scripts/lint.mjs"
+    "release:check": "node scripts/build-client.mjs && node scripts/lint.mjs"
   },
   "dsh": {
     "bundle": {
@@ -51,11 +53,24 @@
     }
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-credentials": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-host-webserver": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
-    "@deepseek-ai/schemastery": "^3.18.1"
+    "@deepseek-ai/dsh": "0.2.0-rc.2",
+    "@deepseek-ai/cordis": "4.0.4",
+    "@deepseek-ai/dsh-credentials": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-host-webserver": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-llm": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.0-rc.2",
+    "@deepseek-ai/schemastery": "3.18.4",
+    "@deepseek-ai/dsh-experimental-voice-input-bundle": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-experimental-speech-to-text": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-experimental-api-speech-to-text": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-experimental-speech-to-text-sensevoice": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-experimental-client-ui-voice-input": "0.2.0-rc.2"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh": { "optional": true }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/irvingzhang0512/dsh-chatty.git"
   }
 }
