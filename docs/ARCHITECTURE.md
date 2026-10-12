@@ -1,6 +1,6 @@
 # dsh-chatty 架构与模块契约
 
-本次产品版为 [PRD](PRD.md) 的 `native-voice-enhancement-20261012-v2`；F012–F016 及相关旧功能优化均待确认／待实现。用户已明确沿用现有 Chatty 界面、全配置 UI、GitHub 来源，以及 Bundle 基线加 Chatty 修订号；实施接口仍需补齐确认。本节补充接入边界，不代表下面的旧模块和路由已经接入官方语音服务。
+本次产品版为 [PRD](PRD.md) 的 `native-voice-enhancement-20261012-v3`；F012–F016 及相关旧功能优化均待确认／待实现。用户已明确以官方配置为基线、增强另行设计、沿用现有 Chatty 界面、全配置 UI、GitHub 仓库 URL 安装，以及 Bundle 基线加 Chatty 修订号；实施接口仍需补齐确认。本节补充接入边界，不代表下面的旧模块和路由已经接入官方语音服务。
 
 目标版技术契约：见 [DSH 0.2.0-rc.2 升级适配](DSH-UPGRADE-20261011.md)（`dsh-upgrade-20261011-v1`，待确认／待实现）。本文原宿主 API 和设置存储说明保留作为当前组合基线；目标版采用该补充中的接口、配置迁移与验收边界，不将旧 API 继续当作目标版可用接口。
 
@@ -48,23 +48,25 @@
 
 ### 当前界面与完整配置接入
 
-保留当前 `conversation.input.right` 的听写／对话／朗读三个按钮、`conversation.input.dock` 操作区域及设置卡的五个标签；目标 Slot／输入／ConfigForms 的适配只改变宿主接入，不以“升级”为由改成官方录音栏或新页面。设置字段逐项见 [CONFIG-UI](CONFIG-UI.md)，全部有效字段的控件和配置契约同时交付，不能只补 schema 或保留“手改配置文件”文案。
+保留当前 `conversation.input.right` 的听写／对话／朗读三个按钮、`conversation.input.dock` 操作区域及设置卡的五个标签；目标 Slot／输入／ConfigForms 的适配只改变宿主接入，不以“升级”为由改成官方录音栏或新页面。[CONFIG-UI](CONFIG-UI.md) 先列官方 26 项与固定行为，再讨论增强功能的设置；旧 72 项仅为 [迁移来源](CONFIG-LEGACY.md)，不自动继承。最终全部有效字段的控件和配置契约同时交付，不能只补 schema 或保留“手改配置文件”文案。
 
 官方配置通过真实 entry ID 的公开配置表单／设置 API 保存。`speechToText.configure` 只处理服务选择与语言，不能拿它修改 SenseVoice 线程或 API 上限；这些字段须保存到其各自条目。需明确配置是否 volatile／重挂载、进行中任务如何收尾，并在当前卡提供生效状态及操作。不同条目分别返回成功／失败，不能让一个按钮把部分失败显示成全成功。控件既读又写同一路径，nested draft 与整份表单不得混用。
 
 ### GitHub 分发与版本事实
 
-发布产物建议分为两层，以下为待实现契约：
+用户已纠正安装来源为 GitHub 仓库 URL；v2 的 tgz 附件方案撤回。以下为待实现契约：
 
-- 安装包内 `compatibility.json`：`schemaVersion: 1`、`packageName`（固定包名）、`chattyVersion`、`bundleVersion`、`chattyRevision`（正整数）、`dshVersion`（验证宿主精确版本）、`sourceCommit`（完整 SHA）、`speechPackages`（Bundle 及四个子包的完整包名到精确版本映射）。版本事实不可由用户手填覆盖。
-- GitHub Release 附件 `release-manifest.json`：上述兼容信息，加 `assetName` 和 `sha256`；摘要在打包后生成，不能把安装包自身的摘要写入包内制造循环。实际下载 URL 从该 Release 的真实附件信息取得，不凭版本字符串编造。
-- Release tag 为 `v<chattyVersion>`，例如 `v0.2.0-rc.2+chatty.1`；tag 固定对应 `sourceCommit`，每次修订发布新 tag／包。文件名避免依赖加号解析，版本身份以包和清单为准；取 URL 时正确编码 tag，不通过可漂移的 latest URL 安装。
+- 仓库中的 `compatibility.json`：`schemaVersion: 1`、`packageName`（固定包名）、`chattyVersion`、`bundleVersion`、`chattyRevision`（正整数）、`dshVersion`（验证宿主精确版本）、`speechPackages`（Bundle 及四个子包的完整包名到精确版本映射），纳入实际安装可见文件。版本事实不可由用户手填覆盖。
+- Git tag 为 `v<chattyVersion>`，例如 `v0.2.0-rc.2+chatty.1`，发布后不移动。安装准备／锁文件记录 `repositoryUrl`、`requestedRef`、解析到的 `resolvedCommit` 和兼容信息；commit 由 Git ref 解析得到，不能要求同一提交中的文件预先填入自身 SHA。GitHub Release 仅可作为说明，不依赖其附件。
+- 安装来源为 `git+https://github.com/irvingzhang0512/dsh-chatty.git#<tag或完整SHA>`，不是包下载 URL。固定 ref 必须已经在远端存在；版本示例并非已创建标签。当前 DSH 原生解析已静态核对并只读运行，裸 HTTPS／git+https／带 tag／带 SHA 均识别为 Git 来源。
+- 发布 tag 包含完整可运行的 ESM 宿主、已生成客户端、bundle patch、元数据、许可证和指南；当前 `lib/client.js` 已被 Git 追踪。Git 安装的 prepack／prepare 生命周期和文件过滤需实测，目标是直接安装发布仓库，无需现场编译。若任何脚本成为安装前置，先修正发布流程并固定契约，不假设 prepack 等于 prepare，不隐式授权构建脚本。
 - 不将上游语音包作为新的内嵌运行依赖复制进 Chatty；宿主已有服务与精确 peer／兼容声明先核对，避免安装自动解析另一套版本。运行校验须核对实际挂载的服务及其来源版本，不只读取任意 node_modules 中一个同名 package.json。
 - 匹配检查比较完整 `bundleVersion` 与五包版本字符串，另行遵守宿主兼容检查；缺包／版本不符不注册依赖该基线的增强，保留可查看的诊断 UI，不下载模型或改写偏好。
 - 当前卡的公开状态包括 Chatty 版本／修订、目标 Bundle、实装五包与宿主版本、匹配原因；字段与响应形状在实施接口固定后补齐，不在本轮改变 HTTP。
-- 更新判断：读取已发布清单 → 校验包名及字段 → 仅在 Bundle 基线与宿主条件相符时比较整数 `chattyRevision` → 选定固定附件 → 校验摘要和包内兼容清单 → 由 desktop 自带安装器完成安装；不能依赖忽略构建元数据的 SemVer 大小比较。网络失败、无兼容候选或回退时保留现有包和设置。
+- 更新判断：读取 Git tags 并解析 commit → 从固定 commit 读取兼容信息 → 校验包名／基线／宿主条件 → 比较整数 `chattyRevision` → 用固定 commit 的仓库 URL 安装 → 核对实装版本及 Profile 锁；不能依赖忽略构建元数据的 SemVer 大小比较。回退改用前一固定 ref，网络失败／不匹配保留现有配置。
+- 原生 DSH 对 Git 包的 manifest 预检需要实际获取，通常由安装后校验裁定，拒绝时恢复 Profile manifest／lock，下载目录可能保留。额外 Bundle 前检须读取固定 commit 的兼容文件，不能在文档中虚称 DSH 会先完成全部校验再下载；不使用版本豁免绕过拒绝。
 
-当前仓库只有本地 prepack 构建／lint，尚无上述产物与 Release。实际发布流程、公开安装说明及隔离安装／更新／回退验收在开发交付时完成，本轮不新增工作流、不发布或安装。
+当前仓库只有本地 prepack 构建／lint，尚无新版兼容文件与 tag。实际 Git 发布流程、公开安装说明及隔离 Git 安装／更新／回退验收在开发交付时完成，本轮不改 package scripts、不新增工作流、不发布或安装。
 
 ### 实施前必须补齐
 
@@ -72,7 +74,7 @@
 2. 目标版输入接口的精确签名、发送终态通知、区间撤销及润色回写能力；若能力不足，先给出可操作的产品替代方案。
 3. 流式扩展的完整模块、请求、事件、错误及清理契约，火山默认端点是否产生真实 partial 的验证结果。
 4. CONFIG 中的真实旧值与引用调查，固定迁移映射及回滚方式。
-5. 完整表单的保存／默认恢复／Provider 重载，以及版本读取、GitHub 清单、打包内容和 desktop 安装操作的完整实现接口。
+5. 官方配置及共同确定的增强 schema、完整表单的保存／默认恢复／Provider 重载；版本读取、Git 兼容文件／ref 解析、可运行仓库内容和 desktop Git 安装操作的完整实现接口。
 
 上述未决项尚未构成完整实施契约；本次仅交付 PRD 与边界供审阅，不据此开始源码／测试实现。
 

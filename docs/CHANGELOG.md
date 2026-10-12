@@ -1,5 +1,11 @@
 # 变更记录
 
+## 2026-10-12 PRD v3：官方配置优先与 Git 仓库安装（不变更包版本）
+
+- 按用户纠正将 CONFIG-UI 改为官方 26 项／固定行为先列、官方不支持的增强功能共同设计；旧 Chatty 72 项单列 CONFIG-LEGACY，仅用于迁移调查，不机械继承为新版需求。
+- 正式安装改为 GitHub repo URL 固定 tag／完整 commit，撤回 v2 tgz 附件建议；同步 F015／F016、架构、README，兼容文件来自固定 Git ref，安装记录解析 commit，不要求文件包含自身提交 SHA。
+- 只读运行 DSH 0.2.0-rc.2 原来源解析，对四种 GitHub URL 分类通过；原生 Git 兼容判断通常安装后裁定并恢复拒绝的 Profile manifest／lock，额外 Bundle 前检需另行设计。未发布标签、安装／更新／回退、改 package scripts／版本或运行配置。
+
 ## 2026-10-12 PRD v2：现有界面、全配置与 GitHub 分发（不变更包版本）
 
 - 按用户补充将增强固定在现有 Chatty 三按钮、dock、原生输入框和五标签设置卡；新增 [CONFIG-UI](CONFIG-UI.md)，逐项覆盖当前 schema 72 项与官方配置 26 项，失效字段另列迁移处理。
