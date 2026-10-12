@@ -1,5 +1,11 @@
 # 变更记录
 
+## 2026-10-12 PRD v2：现有界面、全配置与 GitHub 分发（不变更包版本）
+
+- 按用户补充将增强固定在现有 Chatty 三按钮、dock、原生输入框和五标签设置卡；新增 [CONFIG-UI](CONFIG-UI.md)，逐项覆盖当前 schema 72 项与官方配置 26 项，失效字段另列迁移处理。
+- PRD／SPEC／架构／配置同步 GitHub 固定 Release 安装包、精确 Bundle 绑定和已选定的 `<bundleVersion>+chatty.<revision>` 规则；新增 F015／F016，说明构建元数据不参与 SemVer 排序，更新按 GitHub 清单中的整数修订号判断。
+- 用户已明确界面和版本选择，整版生成文档与未决实施接口仍待确认。GitHub Releases 只读核对为空，未发布、推送、安装或新增工作流；package.json 仍 0.1.0，源码／测试实现／运行配置保持。
+
 ## 2026-10-12 官方语音增强 PRD 重写（不变更包版本）
 
 - 新增 [PRD](PRD.md) 审阅稿 `native-voice-enhancement-20261012-v1`，按产品定位、现有功能、上游／增强分工、用户流程、配置、范围和验收组织；原始 REQUIREMENTS 保持只读。
