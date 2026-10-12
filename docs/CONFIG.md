@@ -1,11 +1,42 @@
 # dsh-chatty 配置参考
 
+本次增强版入口为 [PRD](PRD.md)（`native-voice-enhancement-20261012-v1`，待确认／待实现）。下节记录目标配置所有权和旧字段调查；后续历史配置表有经典 Provider／凭据默认值等陈旧说明，现行默认值以源码核对结果为证据，不能照抄为新版可用配置。此轮没有修改任何运行配置。
+
 目标宿主配置补充：见 [DSH 0.2.0-rc.2 升级适配契约](DSH-UPGRADE-20261011.md)（`dsh-upgrade-20261011-v1`，待确认／待实现）。既有字段含义、凭据边界、覆盖／清理规则不变；目标持久层和表单入口迁移以该版契约为准，旧 settings.yaml 接入说明仍是当前组合基线，不表示目标版本已迁移或验证。
 
 > 本文档描述 `dsh-chatty` 的**配置契约**：字段名、类型、默认值与含义。
 > **字段名与「插件配置默认值」一律以 [`lib/config.js`](../lib/config.js) 的 schemastery schema 为准**；本文与代码不一致时以代码为准，并回来同步本文。
 > **Provider 默认值是另一层**：[`lib/stt/providers.js`](../lib/stt/providers.js) 的 `STT_DEFAULTS` 与 [`lib/tts/providers.js`](../lib/tts/providers.js) 的 `TTS_DEFAULTS` 只在「插件配置留空」时兜底，和 `lib/config.js` 里的默认值不是同一个概念（见 §3.1 / §4.1）。
 > 已实现模块读取的字段见文末附录（§8）。
+
+## 官方语音增强：配置所有权与迁移预期
+
+目标设置可在 Chatty 内统一呈现，但只向实际所有者写入。官方 `defaultProvider`／`language` 不另建一套可同时编辑的 Chatty 副本；已有官方偏好优先沿用，旧 Chatty 选择作为迁移候选展示，不默默覆盖。
+
+| 当前字段／数据 | 已核对事实 | 新版建议处理（待确认） |
+|---|---|---|
+| `stt.provider` | 当前为 `volcano`／`siliconflow`，不含官方本地识别 | 候选映射为 `chatty-volcano`／`chatty-siliconflow`，最终选择写官方 `defaultProvider`；已有官方选择不自动覆盖，重复选择字段迁移后清理 |
+| `stt.language` | 旧默认 `zh-CN`；官方语言按 Provider 枚举 | 写官方 `language`，按所选 Provider 校验；语言别名映射需核对支持列表，不将任意语言直接转为 auto |
+| `stt.model`、`credential`、`base_url`、`stream_url`、`resource_id` | 云端适配器有效参数 | 留在 Chatty Provider 配置；切 Provider 必须保留对应参数归属，不能将另一家的端点／密钥引用混入 |
+| `stt.streaming`、`partial_preview`、`stt.vad.*` | 现有增强行为；官方只有完整录音 | 保留为 Chatty 扩展配置；生效能力与实际 Provider 一致；无流式能力时不冒充实时字幕 |
+| `stt.continuous_listening` | 当前意为页面启动后自动监听，默认 false | 与产品“持续听写模式”分别解释；如保留自动开始，必须显式显示并遵守页面／会话生命周期，迁移不自动开启 |
+| `stt.wake_word.*` | 历史声学唤醒占位，本版不实现 | 核对所有读写／导入引用后，确定失效的占位字段纳入迁移清理；保留文字前缀设置 `voice_control.wake_*` |
+| `mic_device_id` | 当前为顶层字段；设置卡输入显示却读 `draft.mic_device_id` | 统一真实读写路径；0.2.0 无新版原生设备控件，不假定浏览器偏好键名；设备迁移与保存位置待目标版接口验证 |
+| `noise_suppression`、`echo_cancellation`、`auto_gain_control` | 浏览器采集参数 | 保留为录音设置，不称完整 AEC；所选设备断开不得静默切换另一个显式设备 |
+| `max_audio_bytes`、`timeout_ms` | 旧 Chatty 字节默认 25 MiB；请求超时默认 120000 ms | 完整录音有效上限读取官方 catalog（笔记默认 4 MiB／120 s）；不得自动放宽。请求超时与音频时长分别说明，扩展路径上限需单独固定；冗余字节字段迁移后清理 |
+| `draft.auto_send` | 现有显式自动发送配置，默认 false | 若保留，界面标明“说完自动发送”；保留已有明确选择，不因安装开启；与运行时对话模式分开 |
+| `draft.max_utterances`、`separator`、`polish_on_command` | 仍有宿主读取；浏览器直写路径不完全使用同一份设置 | 先核对兼容草稿、工具与全部路由引用，再决定对应增强参数的保留／迁移／清理，不能当作无效字段直接删 |
+| `voice_control.*`、`polish.*`、`tts.*`、`ui.*` | 现有增强配置 | 在 Chatty 内分组呈现；默认值变更与保存生效范围逐项固定，运行时会话模式不持久化进偏好 |
+| `tts.app_id_credential`、`tts.cluster` | 现行 schema／Agent Plan TTS 不使用，但设置卡仍读写 | 核对历史配置、旧角色和导入后清理确定失效字段，同时移除对应 UI／读写引用；不随配置清理删除凭据库记录 |
+| `ui.visualizer: wave` | 当前实际仍为音量柱，F010 待确认 | 不迁移为“已提供真实波形”；具体保留／删除选项待 F010 单独确认 |
+| 旧扁平润色字段 | `polish.js` 仍保留兼容读取 | 核对所有原始值与有效引用，明确到 `polish.*` 的映射；在确认前不能当作失效字段删去 |
+| 凭据、本地模型缓存、未知配置 | 不属于可整份白名单覆盖的数据 | 凭据仅保留引用，模型缓存复用官方所有者；未知字段原样保留并列待核查 |
+
+当前源码默认：`stt.provider`／`tts.provider` 为 `volcano`，凭据为 `VOLCENGINE_AGENT_PLAN_API_KEY`；硅基流动 Provider 默认凭据为 `SILICONFLOW_API_KEY`。旧经典凭据与 Agent Plan Key 不能只按名字自动视为等价，切换须核验授权体系，不能静默替换密钥。
+
+实施契约还需固定：新配置字段完整 schema、各项 UI 入口、按真实 entry ID 的写入方式、作用时机（当前任务还是下一次任务）、迁移触发点与版本、备份和回滚。上述表是基于源码的迁移调查起点，不是已执行迁移的记录，也不是未实现的命令。
+
+配置验收使用脱敏的真实旧配置，覆盖缺失／部分分节、停用残留、多处引用、语言和 Provider 冲突、重复迁移及失败回滚；检查原始持久值差异，而不只检查补默认值后的快照。语音任务开始时固定 Provider／语言，保存中途改变偏好只作用于后续任务。
 
 ---
 

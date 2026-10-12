@@ -1,5 +1,7 @@
 # dsh-chatty
 
+本次重写的产品审阅稿见 [PRD](docs/PRD.md)：先列当前功能，再说明基于官方语音输入的优化及全部增强在 Chatty 内的分工；状态为待确认／待实现。本文后续 V1 图示、经典 Provider 与草稿说明保留为旧介绍，当前差异请以 PRD 功能表和 SPEC 为准，不能作为 desktop 新版已验收的使用指南。
+
 当前功能与验收以 [docs/SPEC.md](docs/SPEC.md) 为入口；原始需求保留为历史来源，技术契约见规格内的文档索引。功能任务先改规格与相关技术契约，用户明确确认该版文档后再开发；已确认同一版不重复询问。Bug 按已有且不变的预期查源码修复。
 
 
@@ -176,6 +178,8 @@ npm run lint             # ESM 语法检查 + 片段/生成物结构检查
 
 | 文件 | 内容 |
 |---|---|
+| [docs/PRD.md](docs/PRD.md) | 新版产品审阅稿：现有功能、官方基础／Chatty 增强分工、流程、范围与验收 |
+| [docs/SPEC.md](docs/SPEC.md) | 按稳定功能编号维护预期、实现差异、验收及确认状态 |
 | [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | 需求说明书全文（项目目标、架构、V1 范围、后续阶段） |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 模块契约：导出名、数据形状、HTTP 路由、浏览器半边约定 |
 | [docs/DESIGN.md](docs/DESIGN.md) | 设计说明：核心中间对象、数据流、状态机、关键取舍 |

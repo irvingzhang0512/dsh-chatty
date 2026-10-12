@@ -1,9 +1,59 @@
 # dsh-chatty 架构与模块契约
 
+本次产品版为 [PRD](PRD.md) 的 `native-voice-enhancement-20261012-v1`；F012–F014 及相关旧功能优化均待确认／待实现。本节补充接入边界，不代表下面的旧模块和路由已经接入官方语音服务。
+
 目标版技术契约：见 [DSH 0.2.0-rc.2 升级适配](DSH-UPGRADE-20261011.md)（`dsh-upgrade-20261011-v1`，待确认／待实现）。本文原宿主 API 和设置存储说明保留作为当前组合基线；目标版采用该补充中的接口、配置迁移与验收边界，不将旧 API 继续当作目标版可用接口。
 
 > 本文件是**实现契约**：所有模块必须按此处的导出名与数据形状实现。
 > 需求来源见 [`REQUIREMENTS.md`](./REQUIREMENTS.md)。设计说明见 [`DESIGN.md`](./DESIGN.md)。
+
+## 官方语音增强：待确认接入契约
+
+### 所有权与交付
+
+| 对象 | 目标所有者与边界 |
+|---|---|
+| 识别注册表、默认 Provider、语言 | 官方 `speechToText`；Chatty 注册具名云端 Provider，选择写回官方服务 |
+| 本地模型、工作进程、准备任务 | 官方 SenseVoice Provider；复用原缓存与准备任务，Chatty 不复制下载／推理模块 |
+| 完整录音 Remote 校验 | 官方 `speechController`；读取 catalog 的有效字节／时长上限 |
+| 持续采集、分句、流式预览扩展 | Chatty 包内；必须通过目标版公开的麦克风／输入 UI 组合边界协调所有权 |
+| 用户正文 | 原生输入编辑器；Chatty 仅保存预览、待插入结果和操作元数据，不再用 voiceBuffer 全文覆盖 |
+| 口令、润色、TTS、播放与对话模式 | Chatty 包内；按会话拥有任务，取消后丢弃迟到结果 |
+| 密钥 | DSH Credentials；仅宿主解析，注册信息与客户端状态不含密钥 |
+
+同一时刻只能有一个录音所有者。官方 UI 已经拥有的录音不能被另一套 Chatty 采集重复消费；模型准备生命周期由 Host 拥有，不与观察它的页面绑定。
+
+### 已有公开接缝与版本证据
+
+调研固定 commit／0.2.1-alpha.2 的公开声明提供以下能力，实施前仍需对目标 0.2.0-rc.2 服务逐项核对：
+
+- `speechToText.register(provider)` 返回异步清理函数；Provider 为 `{ info, preparation?, transcribe(input, signal) }`。`info` 包含 `id`、`name`、`location: 'host-local' | 'cloud'`、`languages`；`input` 为完整 WAV 字节与语言；结果为 `{ text, audioSeconds, inferenceSeconds }`。
+- `speechToText.resolve(request)` 固定 Provider 实例；`transcribe(spec, signal)` 只执行该实例；注销／替换使旧任务失效。偏好通过 `configure({ providerId?, language? })` 写入原条目。
+- `speechController.catalog()`／`follow(signal)` 提供选择、准备状态与 `maxAudioBytes`／`maxDurationSeconds`；`transcribe({ audioBase64, providerId?, language? }, signal)` 返回完整转写；`prepare`／`cancelPreparation` 管理原有准备任务。
+- 已提取的 0.2.0-rc.2 官方客户端调用 `inputActions.captureInsertion()`，再通过 `insertText(text, capturedSpan)` 插入；拒绝时保留文本供显式插入，说明目标版已有安全插入路径。本轮未操作 GUI。
+
+**没有已核实的官方 `createStream`、partial 事件、录音结果拦截 Hook 或持续监听扩展接口。** 本地识别的 `Transcript` 只描述最终文字；Chatty 不把同名私有接口补写成官方 API。
+
+### 增强运行规则
+
+- 建议云端注册 id 为 `chatty-volcano`、`chatty-siliconflow`；`sensevoice-local` 保持官方所有权。此映射待目标版注册验证与真实旧配置核对后确认，不修改当前包或 Profile。
+- 完整录音的云端适配器必须返回官方 Transcript 形状、响应 AbortSignal、结束在途任务后再完成注销。供应商请求格式和密钥只在 Chatty 宿主侧处理。
+- Chatty 流式扩展不能改变官方完整录音契约。扩展请求须固定会话、录音代次、Provider／语言和序号；事件须区分 partial、final、错误、关闭，final 仅落地一次。准确导出名、参数、路径／事件形状及上限在接口验证后补齐并再次确认。
+- 流式失败允许退回同一 Provider 的完整录音识别；是否可回退需能力证明，不更换供应商。所有路径约束音频长度、积压和超时，不能仅限制一次 HTTP 请求而放任浏览器缓冲增长。
+- 每次采集绑定会话、Provider、语言、插入位置与代次；会话切换、取消或卸载先失效代次，再取消识别、释放录音及播放。停止一次听写需收完末块再识别；取消则丢弃。
+- 口令仅消费 final，且在正文插入前判断；原生提交锁定时保留结果供处理。普通发送成功后使已发送语音记录失效，不能清空失败发送的草稿。
+- 撤销／清空／润色以可追溯语音区间为范围；版本或区间失效时不做整段替换。润色结果回写、发送成功通知和输入锁定队列规则须由公开编辑器接口支持。
+- 模式与播放按会话管理；语音对话不写持久自动朗读开关。旧 `transcribe_audio` 工具及 `/dsh-chatty/*` 消费者在迁移前核对全部调用点，明确兼容或移除；现阶段不删路由或改响应。
+- 保持纯 ESM、零新增运行时依赖；Host 能力从入口注入。若所需官方值导入不在现有允许列表，先修订子仓库契约并确认，不隐式放宽。
+
+### 实施前必须补齐
+
+1. 目标版 Slot／UI 组合和录音互斥，确定如何实现一个用户入口；必要的组合变更先提交审阅，不劫持官方 DOM 或未公开内部状态。
+2. 目标版输入接口的精确签名、发送终态通知、区间撤销及润色回写能力；若能力不足，先给出可操作的产品替代方案。
+3. 流式扩展的完整模块、请求、事件、错误及清理契约，火山默认端点是否产生真实 partial 的验证结果。
+4. CONFIG 中的真实旧值与引用调查，固定迁移映射及回滚方式。
+
+上述未决项尚未构成完整实施契约；本次仅交付 PRD 与边界供审阅，不据此开始源码／测试实现。
 
 ## 0. 硬性约束
 
