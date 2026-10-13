@@ -1,6 +1,6 @@
 {
   "name": "@irvingzhang0512/dsh-chatty",
-  "version": "0.2.0-rc.2+chatty.1",
+  "version": "0.2.0-rc.2+chatty.2",
   "description": "基于官方语音 Bundle 的持续听写、语音口令、草稿润色与独立朗读增强。",
   "license": "MIT",
   "type": "module",
@@ -64,10 +64,20 @@
     "@deepseek-ai/dsh-experimental-speech-to-text": "0.2.0-rc.2",
     "@deepseek-ai/dsh-experimental-api-speech-to-text": "0.2.0-rc.2",
     "@deepseek-ai/dsh-experimental-speech-to-text-sensevoice": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-experimental-client-ui-voice-input": "0.2.0-rc.2"
+    "@deepseek-ai/dsh-experimental-client-ui-voice-input": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-native-command": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-credentials-local": "0.2.0-rc.2"
   },
   "peerDependenciesMeta": {
-    "@deepseek-ai/dsh": { "optional": true }
+    "@deepseek-ai/dsh": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-native-command": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-credentials-local": {
+      "optional": true
+    }
   },
   "repository": {
     "type": "git",

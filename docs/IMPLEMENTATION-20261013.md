@@ -1,6 +1,6 @@
 # 官方 Bundle 底座＋Chatty 增强：实施契约
 
-文档版：`native-voice-enhancement-20261013-v5`；日期：2026-10-13；状态：用户要求按计划实施并持续完成；本次同步文档后连续开发。目标 Desktop／Bundle 为 `0.2.0-rc.2`，目标 Chatty 为 `0.2.0-rc.2+chatty.1`；实际包已为 0.2.0-rc.2+chatty.1。
+文档版：`native-voice-enhancement-20261013-v5`；日期：2026-10-13；状态：用户要求按计划实施并持续完成；本次同步文档后连续开发。目标 Desktop／Bundle 为 `0.2.0-rc.2`，目标 Chatty 为 `0.2.0-rc.2+chatty.1`；v5 底座已实现；当前包与配置界面按 [v6 契约](SETTINGS-REDESIGN-20261013.md) 演进至 0.2.0-rc.2+chatty.2。
 
 本文与 [PRD](PRD.md)、[SPEC](SPEC.md)、[配置契约](CONFIG.md)、[全配置 UI](CONFIG-UI.md) 构成同一版开发依据。原始 REQUIREMENTS 不修改。架构文档中的旧 API／模块形状只解释旧实现，不覆盖本文。后续新增产品含义按根文档流程确认；本次授权不包含公开发布或日常替换。
 
@@ -106,7 +106,7 @@ volatile 字段经 configForms／settings 带 revision 保存；普通字段通�
 
 ## 6. TTS、摘要与旧模式
 
-保留现有两家 TTS 和内容整理，改为供应商专属参数。规则摘要默认，tts.llm_summary=false；用户启用后才为复杂内容调用模型，失败退回规则。polish.enabled 是润色／模型摘要总许可，polish_on_command 只限制口令触发。
+保留现有两家 TTS 和内容整理，改为供应商专属参数。规则摘要默认，tts.llm_summary=false；用户启用后才为复杂内容调用模型，失败退回规则。polish.enabled 限制润色，独立 tts.llm_summary 控制模型摘要；polish_on_command 只限制口令触发。
 
 手动朗读最新助手回复；自动朗读独立由 tts.auto_read 选择。助手增量／终态按目标 Session 公共事件适配，不回放历史。TTS 取消／轮次取消／切会话后旧合成结果不再入队。人声打断仅在用户已开始持续听写且 interrupt_on_speech=true 时监测，不因点击朗读单独自动开麦；先停播再识别。浏览器降噪／回声消除不是完整 AEC。
 

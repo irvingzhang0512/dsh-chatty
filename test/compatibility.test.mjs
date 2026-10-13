@@ -40,7 +40,7 @@ test('实际包、所有精确 peers、五包与自版本清单必须同时匹�
   )
   assert.equal(
     validateCompatibility(
-      { ...manifest, version: '0.2.0-rc.2+chatty.2' },
+      { ...manifest, version: contract.bundleVersion + '+chatty.' + (contract.chattyRevision + 1) },
       contract,
       actual
     ).matched,

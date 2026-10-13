@@ -1,8 +1,8 @@
 # dsh-chatty
 
-把连续说出的多句话写入 DSH 原生输入框，再由你明确发送；同时提供口令、润色和回复朗读。沿用听写／朗读按钮、dock 和五标签设置卡。
+把连续说出的多句话写入 DSH 原生输入框，再由你明确发送；同时提供口令、润色和回复朗读。沿用听写／朗读按钮、dock 和分区设置卡。
 
-当前版本 **0.2.0-rc.2+chatty.1**，精确匹配 Desktop 与官方语音 Bundle **0.2.0-rc.2**。本次交付本地源码和构建产物，新的 GitHub 固定版本尚待发布；公开安装未验收。实际结果见 [验证记录](docs/VERIFICATION-0.2.0-rc.2+chatty.1.md)。
+当前版本 **0.2.0-rc.2+chatty.2**，精确匹配 Desktop 与官方语音 Bundle **0.2.0-rc.2**。本次交付本地源码和构建产物，新的 GitHub 固定版本尚待发布；公开安装未验收。实际结果见 [验证记录](docs/VERIFICATION-0.2.0-rc.2+chatty.2.md)。
 
 ## 功能
 
@@ -11,7 +11,9 @@
 - 原生输入框是唯一正文，手写和引用保留；冲突结果可插入、重试或丢弃。
 - 七类整句口令：发送、撤销、清空、润色、停止听写、朗读、停止朗读；可以禁用或要求文字前缀。
 - 手动最新回复朗读和独立自动朗读；代码默认跳过，表格／长列表默认规则摘要，模型摘要需另开。
-- 全部 100 项有效配置集成在当前设置卡：官方 26 项、Chatty 74 项，保留各自所有者。
+- 全部 100 项配置分为 Chatty 增强 74 项和官方语音底座 26 项，分别保存；五标签、中文问号帮助、字段重置与草稿保护。
+- 型号／音色可搜索选择，点击刷新从官方文档、模型 API 或 DSH 目录获取；保留旧选项与未保存配置，高级支持手动 ID。
+- 顶部可打开当前实际凭据文件，也可按需展开原生凭据管理。
 
 语音对话、识别后自动发送、声学唤醒、完整 AEC 和真实波形本期延期。
 
@@ -21,13 +23,13 @@
 
 正式安装使用固定 GitHub repo URL，仓库已提交 lib/index.js、lib/client.js 和 patch，正常安装无需现场编译，也不需要 tgz。**以下 ref 是待发布目标，当前不能用于安装：**
 
-`git+https://github.com/irvingzhang0512/dsh-chatty.git#v0.2.0-rc.2+chatty.1`
+`git+https://github.com/irvingzhang0512/dsh-chatty.git#v0.2.0-rc.2+chatty.2`
 
 发布后先用根 tools/desktop-plugin-source.mjs 核对固定 ref、完整 commit 和精确组合，再使用 Desktop 自带插件 CLI 的 add；同一 Bundle 下按 Chatty 整数修订比较。详见 [安装与版本](docs/INSTALL.md)。
 
 ## 第一次使用
 
-1. 在“插件 → Chatty → 语音输入与朗读”打开五标签设置卡。
+1. 在“插件 → Chatty → 语音输入与朗读”打开设置卡，选择“官方语音底座”调整识别服务／语言。
 2. 选识别服务、语言；本地服务点击“准备模型”，云端配置凭据引用并打开“管理 DSH 凭据”保存到原生 Credentials。已有密钥不会显示。
 3. 打开会话，点击听写按钮并授予麦克风权限。说完一句后停顿，识别文字进入原生输入框。
 4. 检查正文后点击原生发送；听写可继续。点击停止收尾，dock 的取消会丢弃本次未完成结果。
@@ -35,7 +37,7 @@
 
 ## 配置与迁移
 
-语音输入、语音输出、指令与草稿、界面、高级保持原布局。每项支持修改、保存、重新加载和恢复组装默认值；保存按所有者反馈，失败项保留待保存值。官方普通参数重载前须停止语音任务。
+Chatty 增强保留语音输入、语音输出、指令与草稿、界面、高级；官方配置单独分区。每项支持修改、保存、重新加载和恢复组装默认值；保存按所有者反馈，失败项保留待保存值。官方普通参数重载前须停止语音任务。
 
 旧配置首次加载会阻止增强启动；在高级中预览迁移、逐项选择冲突、备份后应用。保留未知字段和独立自动朗读，清理旧自动发送和占位项；备份恢复有并发检查。详见 [全配置表](docs/CONFIG-UI.md) 和 [迁移表](docs/CONFIG-LEGACY.md)。
 
@@ -51,6 +53,8 @@
 
 ## 开发与文档
 
-[PRD](docs/PRD.md) · [当前 SPEC](docs/SPEC.md) · [架构](docs/ARCHITECTURE.md) · [配置](docs/CONFIG.md) · [Desktop 开发](docs/DEVELOPMENT.md) · [验收](docs/VERIFICATION-0.2.0-rc.2+chatty.1.md)
+[PRD](docs/PRD.md) · [当前 SPEC](docs/SPEC.md) · [架构](docs/ARCHITECTURE.md) · [配置](docs/CONFIG.md) · [Desktop 开发](docs/DEVELOPMENT.md) · [验收](docs/VERIFICATION-0.2.0-rc.2+chatty.2.md)
 
-原始 [REQUIREMENTS](docs/REQUIREMENTS.md) 只读保留历史，当前行为以上述 v5 规格为准。零新增第三方运行时依赖，官方 peer 来自目标宿主。
+原始 [REQUIREMENTS](docs/REQUIREMENTS.md) 只读保留历史，当前行为以上述 v6 规格为准。零新增第三方运行时依赖，官方 peer 来自目标宿主。
+
+本版为本地待发布交付；日常 Desktop 仍安装 chatty.1。已有合法配置键和默认不变，无需自动迁移；升级与公开发布分别授权。

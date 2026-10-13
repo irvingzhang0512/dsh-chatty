@@ -55,7 +55,7 @@ feat(config)!: 变更 stt.vad 字段名
 
 ## 3. 开发红线
 
-1. **不引入运行时依赖**：`lib/*.js`、`lib/stt/`、`lib/tts/`、`lib/speech/` 只能 import 本地文件与 Node 内置模块；测试运行路径上**禁止** import `@deepseek-ai/*`（peer 依赖可能未安装）。只有 `lib/index.js` 允许 import `@deepseek-ai/schemastery`、`@deepseek-ai/dsh-tools`、`@deepseek-ai/dsh-credentials`、`@deepseek-ai/dsh-llm`。浏览器半边只能 `require('react')` 与可选的 `@deepseek-ai/dsh-client-ui-primitives`。
+1. **不引入运行时依赖**：`lib/*.js`、`lib/stt/`、`lib/tts/`、`lib/speech/` 只能 import 本地文件与 Node 内置模块。只有 `lib/index.js` 允许引用宿主包：既有 schemastery／tools／credentials／llm，以及 v6 凭据文件动作懒加载的 native-command／credentials-local；后两项精确 optional peers，仅影响该动作。宿主兼容测试必须加载目标真实 peers，不跳过。浏览器半边只能 `require('react')` 与可选的 `@deepseek-ai/dsh-client-ui-primitives`。
 2. **密钥不下发浏览器**：API Key 只在宿主半边经 `ctx.credentials` 按 credential 引用名解析；插件配置只存引用名（规范形式 `VOLCANO_SPEECH` / `VOLCANO_SPEECH_APPID` / `SILICONFLOW`，写 `volcano-speech` 会被 `lib/credential-name.js` 归一化），禁止明文写入任何配置文件、日志或 HTTP 响应。
 3. **`lib/client-src/` 片段不得使用 `import` / `export`**：片段按文件名排序拼接成 `lib/client.js`，共享同一个 `factory` 作用域，用 `const` / `function` 声明；变量名不得与其它片段冲突。改片段后必须重新构建。
 4. **契约以 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 为准**：导出名、参数形状、HTTP 路径与响应结构不得随手改动；确需变更时先改契约文档再改代码，并在 `docs/CHANGELOG.md` 说明。

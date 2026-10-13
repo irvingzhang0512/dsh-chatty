@@ -1,10 +1,12 @@
 # 实现与验证索引
 
-当前范围为 native-voice-enhancement-20261013-v5，稳定编号见 [SPEC](SPEC.md)。原始 V1 REQUIREMENTS 和 DESIGN 只作为历史来源；当前字段、接口和验收不要从旧表推导。
+当前范围为 chatty-settings-redesign-20261013-v6，稳定编号见 [SPEC](SPEC.md)。原始 V1 REQUIREMENTS 和 DESIGN 只作为历史来源；当前字段、接口和验收不要从旧表推导。
 
-- F001–F008、F012–F016：当前源代码已实现，运行通过及待办逐项见 [验收记录](VERIFICATION-0.2.0-rc.2+chatty.1.md)。
+- F001–F008、F012–F016：当前源代码已实现，运行通过及待办逐项见 [验收记录](VERIFICATION-0.2.0-rc.2+chatty.2.md)。
 - F009：语音对话延期，自动提交和旧恢复已停用。
 - F010：bars／off 生效，真实 wave 延期。
 - F011：声学唤醒、完整双向语音和 AEC 等延期。
 
 已完成实现不等于真实云端、真人设备或公网安装通过。根清单不提前写 verifiedWith。
+
+- F017–F019：分区设置、完整帮助、显式模型刷新与缓存、实际凭据文件动作已实现；本版新增模块、原生与浏览器证据见对应验收，不套用 v1 的真实设备／本地推理记录。

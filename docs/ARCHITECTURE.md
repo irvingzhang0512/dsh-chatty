@@ -1,10 +1,10 @@
 # Chatty 架构与接口契约
 
-native-voice-enhancement-20261013-v5；目标 Desktop／官方五包 0.2.0-rc.2。产品规格见 [SPEC](SPEC.md)，详细请求和迁移见 [实施契约](IMPLEMENTATION-20261013.md)。
+chatty-settings-redesign-20261013-v6；目标 Desktop／官方五包 0.2.0-rc.2。产品规格见 [SPEC](SPEC.md)，详细请求和迁移见 [实施契约](IMPLEMENTATION-20261013.md)。
 
 ## 数据与所有权
 
-原生编辑器保存唯一正文、引用和 draftRev。客户端 draft-ledger 只保留可靠区间和自身编辑记录，不维护可回写的 Voice Draft 全文。配置沿四个所有者保存；Credentials 保存密钥；SenseVoice 保存模型与准备任务；Chatty 只保存配置备份，不写音频正文到诊断日志。
+原生编辑器保存唯一正文、引用和 draftRev。客户端 draft-ledger 只保留可靠区间和自身编辑记录，不维护可回写的 Voice Draft 全文。配置沿四个所有者保存；Credentials 保存密钥；SenseVoice 保存模型与准备任务；Chatty 保存配置备份及独立的模型目录缓存，不写音频正文到诊断日志。
 
 完整句 WAV → 官方 speechController → 具名 Provider；火山真实流式另走 Chatty start／events／push／stop／cancel → async WebSocket。事件带录音代次、句标识、序号，partial 与 final 分离；断连／超时没有 final 则失败，不能换 Provider。
 
@@ -28,3 +28,9 @@ native-voice-enhancement-20261013-v5；目标 Desktop／官方五包 0.2.0-rc.2�
 当前输入、会话模型选择及最新助手消息分别使用公开 useInput/inputActions、sessionProjections.modelSelection、Session.deriveMessages。禁止私有编辑器、同步已废弃事件快照和整份草稿回写。
 
 旧 voice-draft／composer-text／pseudo-stream 模块仅保留离线历史用例，不进入新版生产识别或编辑器链路。旧语音对话接口明确延期，不承接自动提交。
+
+## v6 设置与目录接缝
+
+[配置改版契约](SETTINGS-REDESIGN-20261013.md) 定义新增路由。`settings-presentation.js` 为所有字段添加中文分组与帮助；`model-catalog.js` 解析官方正文／字段并按用途缓存；`credential-file.js` 只打开宿主确定的当前本地凭据文件。宿主值导入仍仅在 index.js，文件动作 optional peers 惰性加载，客户端无 Node／宿主值导入。
+
+`client-src/70-settings.js` 管理四个所有者的独立草稿与 CAS，`71-settings-controls.js` 使用原生 SegmentedTabs／Button／Switch／Tooltip，搜索目录、状态、来源和自定义值。打开卡片只读缓存与提供者元数据；LLM listModels 可能执行远端发现，只有点击刷新时才调用。成功保存只推进该所有者 token；刷新目录、本地准备或凭据状态不调用全表重载。

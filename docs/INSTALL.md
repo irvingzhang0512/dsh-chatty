@@ -1,8 +1,8 @@
 # 固定 Git 来源安装与版本
 
-版本：0.2.0-rc.2+chatty.1；Desktop／Bundle／四个子包精确 0.2.0-rc.2。当前正式 tag 尚未公开，下面是待发布安装说明，不代表公网安装已通过。
+版本：0.2.0-rc.2+chatty.2；Desktop／Bundle／四个子包精确 0.2.0-rc.2。当前正式 tag 尚未公开，下面是待发布安装说明，不代表公网安装已通过。
 
-正式 repo URL：git+https://github.com/irvingzhang0512/dsh-chatty.git#v0.2.0-rc.2+chatty.1，或发布后的完整 40 位 commit。禁止用 main、浮动 latest 或缩写 SHA 作为固定来源。
+正式 repo URL：git+https://github.com/irvingzhang0512/dsh-chatty.git#v0.2.0-rc.2+chatty.2，或发布后的完整 40 位 commit。禁止用 main、浮动 latest 或缩写 SHA 作为固定来源。
 
 1. 正常退出待维护的 Desktop 实例（含托盘宿主），备份其 Profile 配置／manifest／lock；先在隔离 profile 执行。
 2. 使用根 tools/desktop-plugin-source.mjs --source <固定URL> --actual <实际组合JSON> 只读预检。检查清单、五包、产物和无现场构建生命周期，得到完整 commit；可传 --installed-version 检查同基线整数修订。
@@ -13,3 +13,7 @@
 当前构建产物已追踪，无 prepare／install／postinstall，发布检查改为显式 release:check，没有 prepack 生命周期；实际 Git 生命周期由隔离 pnpm 验证，不能仅凭字段名推导成功。公开 URL 安装必须在发布后单列通过。
 
 日常安装授权、发布授权不由本次隔离开发自动扩大；旧根版本锁保持原组合，新版只在独立 Desktop 候选记录。
+
+## chatty.1 → chatty.2
+
+官方 Bundle 与全部配置键、所有者、默认保持。本地固定 Git 升级只更换插件及已提交客户端产物；已有合法设置无需迁移。新增实际凭据文件打开依赖 Desktop 提供的 native-command／credentials-local optional peers；缺少时说明原因，其余功能继续。升级后检查分区 74＋26、问号、模型刷新及旧语音行为。日常当前仍为 chatty.1，其安装记录不是本版安装证明。
