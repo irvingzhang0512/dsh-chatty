@@ -18,10 +18,12 @@ Host 使用安装包 Electron Node carrier，插件 CLI 和 pnpm 使用安装包
 
 ## 验收与发布
 
-把离线、真实 carrier、原生输入、真实本地、真人设备、真实云端和固定 Git 验证分开写入 [验收记录](VERIFICATION-0.2.0-rc.2+chatty.2.md)。合成音频只证明对应链路，不替代真人测试。
+把离线、carrier、原生输入、真实本地、真人设备、云端与固定Git验证分开写入[验收记录](VERIFICATION-0.2.0-rc.2+chatty.3.md)。合成音频与全局llm/stream测试拦截不代替真实推理。
 
 源代码、lib/client.js、compatibility.json 与 docs 独立中文提交；根候选记录完整 SHA，要求新 Desktop 的提交不能混入旧核心锁。公开推送／创建正式 tag、GitHub 首装验收及日常替换在可审阅成果后取得授权。
 
 ## 配置改版调试
 
 v6 的两个文件动作 peer 为精确 0.2.0-rc.2 optional；仅 index.js 惰性引用。目录抓取／密钥解析都在宿主，打开设置不联网，手动刷新才读取目录；默认会话供应商经公开 modelSelection 取得。测试目录独立于配置，绝不复制日常凭据。原生 surface 必须显示窗口，host carrier 可隐藏；外部编辑器／登录浏览器不归隔离工具退出管理。
+
+v3通过plugins.detail.section追加增强，activity单槽priority遮蔽只针对官方赢家。状态流依赖稳定remote容器及可选remote.speech命名空间，不声明容器会导致订阅不启动；消费follow时accept、清理dispose。详情内返回列表用实际“返回插件列表”，重复点侧栏插件不会自动返回。100项原生接口矩阵分批执行，单次有界，超时不自动重试保存；截图先核对可见窗口，欢迎画面不能作为配置截图通过。

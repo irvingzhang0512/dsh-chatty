@@ -1,6 +1,6 @@
 # 官方 Bundle 底座＋Chatty 增强：实施契约
 
-文档版：`native-voice-enhancement-20261013-v5`；日期：2026-10-13；状态：用户要求按计划实施并持续完成；本次同步文档后连续开发。目标 Desktop／Bundle 为 `0.2.0-rc.2`，目标 Chatty 为 `0.2.0-rc.2+chatty.1`；v5 底座已实现；当前包与配置界面按 [v6 契约](SETTINGS-REDESIGN-20261013.md) 演进至 0.2.0-rc.2+chatty.2。
+本文保留v5服务／草稿／迁移契约，Desktop／Bundle仍0.2.0-rc.2；目录／凭据按[v6契约](SETTINGS-REDESIGN-20261013.md)，当前入口按[官方详情增强](OFFICIAL-SETTINGS-20261014.md)演进至chatty.3。旧入口与整包UI禁用描述由本版覆盖，服务接口不变。
 
 本文与 [PRD](PRD.md)、[SPEC](SPEC.md)、[配置契约](CONFIG.md)、[全配置 UI](CONFIG-UI.md) 构成同一版开发依据。原始 REQUIREMENTS 不修改。架构文档中的旧 API／模块形状只解释旧实现，不覆盖本文。后续新增产品含义按根文档流程确认；本次授权不包含公开发布或日常替换。
 

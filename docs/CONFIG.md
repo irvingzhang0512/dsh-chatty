@@ -1,6 +1,6 @@
 # 配置契约
 
-chatty-settings-redesign-20261013-v6；当前包 0.2.0-rc.2+chatty.2。全部有效字段、类型、默认、控件及生效见 [CONFIG-UI](CONFIG-UI.md)。配置依据来自目标官方 schema 和 Chatty [lib/config.js](../lib/config.js)，原始需求不作为当前字段表。
+chatty-official-settings-20261014-v1；当前包0.2.0-rc.2+chatty.3。字段／类型／默认／存储保持，入口为官方语音详情原2项＋下方74项＋底部补充24项，见[CONFIG-UI](CONFIG-UI.md)及[本版契约](OFFICIAL-SETTINGS-20261014.md)。
 
 | 所有者 | 字段数 | 保存／生效 |
 |---|---:|---|

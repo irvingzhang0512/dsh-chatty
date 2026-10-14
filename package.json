@@ -1,6 +1,6 @@
 {
   "name": "@irvingzhang0512/dsh-chatty",
-  "version": "0.2.0-rc.2+chatty.2",
+  "version": "0.2.0-rc.2+chatty.3",
   "description": "基于官方语音 Bundle 的持续听写、语音口令、草稿润色与独立朗读增强。",
   "license": "MIT",
   "type": "module",

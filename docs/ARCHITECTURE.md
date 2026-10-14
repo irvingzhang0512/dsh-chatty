@@ -1,6 +1,6 @@
 # Chatty 架构与接口契约
 
-chatty-settings-redesign-20261013-v6；目标 Desktop／官方五包 0.2.0-rc.2。产品规格见 [SPEC](SPEC.md)，详细请求和迁移见 [实施契约](IMPLEMENTATION-20261013.md)。
+chatty-official-settings-20261014-v1；目标 Chatty 0.2.0-rc.2+chatty.3、Desktop／官方五包 0.2.0-rc.2。产品规格见 [SPEC](SPEC.md)，本版挂载／状态与保存契约见 [官方详情增强](OFFICIAL-SETTINGS-20261014.md)；既有请求和迁移见 [实施契约](IMPLEMENTATION-20261013.md)。
 
 ## 数据与所有权
 
@@ -34,3 +34,5 @@ chatty-settings-redesign-20261013-v6；目标 Desktop／官方五包 0.2.0-rc.2�
 [配置改版契约](SETTINGS-REDESIGN-20261013.md) 定义新增路由。`settings-presentation.js` 为所有字段添加中文分组与帮助；`model-catalog.js` 解析官方正文／字段并按用途缓存；`credential-file.js` 只打开宿主确定的当前本地凭据文件。宿主值导入仍仅在 index.js，文件动作 optional peers 惰性加载，客户端无 Node／宿主值导入。
 
 `client-src/70-settings.js` 管理四个所有者的独立草稿与 CAS，`71-settings-controls.js` 使用原生 SegmentedTabs／Button／Switch／Tooltip，搜索目录、状态、来源和自定义值。打开卡片只读缓存与提供者元数据；LLM listModels 可能执行远端发现，只有点击刷新时才调用。成功保存只推进该所有者 token；刷新目录、本地准备或凭据状态不调用全表重载。
+
+v3 在 plugins.detail.section 追加唯一表单，官方原2项不由该表单编辑；chatty／api／sensevoice独立控件／保存／弃稿。72-official-integration 管理公开语音状态流、activity优先级遮蔽与生命周期；自身配置卡改为公开 pluginNavigation 跳转。

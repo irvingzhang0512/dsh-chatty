@@ -1,8 +1,8 @@
 # 固定 Git 来源安装与版本
 
-版本：0.2.0-rc.2+chatty.2；Desktop／Bundle／四个子包精确 0.2.0-rc.2。当前正式 tag 尚未公开，下面是待发布安装说明，不代表公网安装已通过。
+版本：0.2.0-rc.2+chatty.3；Desktop／Bundle／四个子包精确0.2.0-rc.2。正式tag未公开，下面是待发布安装说明。
 
-正式 repo URL：git+https://github.com/irvingzhang0512/dsh-chatty.git#v0.2.0-rc.2+chatty.2，或发布后的完整 40 位 commit。禁止用 main、浮动 latest 或缩写 SHA 作为固定来源。
+正式 repo URL：git+https://github.com/irvingzhang0512/dsh-chatty.git#v0.2.0-rc.2+chatty.3，或发布后完整40位commit。不用浮动分支或缩写SHA。
 
 1. 正常退出待维护的 Desktop 实例（含托盘宿主），备份其 Profile 配置／manifest／lock；先在隔离 profile 执行。
 2. 使用根 tools/desktop-plugin-source.mjs --source <固定URL> --actual <实际组合JSON> 只读预检。检查清单、五包、产物和无现场构建生命周期，得到完整 commit；可传 --installed-version 检查同基线整数修订。
@@ -17,3 +17,7 @@
 ## chatty.1 → chatty.2
 
 官方 Bundle 与全部配置键、所有者、默认保持。本地固定 Git 升级只更换插件及已提交客户端产物；已有合法设置无需迁移。新增实际凭据文件打开依赖 Desktop 提供的 native-command／credentials-local optional peers；缺少时说明原因，其余功能继续。升级后检查分区 74＋26、问号、模型刷新及旧语音行为。日常当前仍为 chatty.1，其安装记录不是本版安装证明。
+
+## chatty.2 → chatty.3
+
+配置移到官方语音详情原内容下方：官方原2项＋增强74项＋折叠补充24项，三个下方所有者独立保存。Chatty自身详情仅保留跳转。升级移除组合层整个ui-voice-input禁用，改为公开槽遮蔽重复麦克风；用户显式覆盖保持，若其禁用了官方UI，先由用户核对该覆盖。100项键／默认／持久值及既有settings接口不变，无自动值迁移。日常目前已安装chatty.2，本版安装事实另记。

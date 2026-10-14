@@ -55,6 +55,7 @@ async function loadClientBundle() {
     setInterval,
     clearInterval,
     URL,
+    Event,
     fetch: async () => { throw new Error('client bundle should not call fetch during smoke test') },
     btoa: (value) => Buffer.from(String(value), 'binary').toString('base64'),
     navigator: { mediaDevices: { getUserMedia: async () => { throw new Error('no mic in test') } } },
@@ -81,6 +82,8 @@ function createClientHarness() {
     slots: {
       inject(name, callback) { callback() },
       register(spec, component) { slots.push({ spec, component }) },
+      entries() { return [] },
+      subscribe() { return () => {} },
     },
     locale: {
       register(namespace, locale) { locales.push({ namespace, locale }); return () => {} },
@@ -105,7 +108,7 @@ test('客户端 bundle：入口 id、inject 面与 slot 注册', async () => {
   })
   assert.equal(typeof mod.apply, 'function')
   // 注意：bundle 在 vm 里执行，数组来自另一个 realm，不能直接用 deepStrictEqual。
-  assert.equal(Array.from(mod.inject).join(','), 'timer,slots,configForms,locale')
+  assert.equal(Array.from(mod.inject).join(','), 'timer,slots,configForms,locale,remote')
 
   const harness = createClientHarness()
   mod.apply(harness.ctx)
@@ -115,6 +118,7 @@ test('客户端 bundle：入口 id、inject 面与 slot 注册', async () => {
     'conversation.input.dock',
     'conversation.input.right',
     'plugins.bundle.config',
+    'plugins.detail.section',
   ])
   for (const slot of harness.slots) {
     assert.equal(typeof slot.component, 'function', `${slot.spec.name} 必须注册组件`)
@@ -165,6 +169,10 @@ test('客户端 bundle：Voice Bar 与 Draft 面板首次渲染不抛错', async
   const card = harness.slots.find((item) => item.spec.name === 'plugins.bundle.config')
   const summary = card.component({ ...props, view: 'summary' })
   assert.ok(summary !== undefined)
+  const official=harness.slots.find(item=>item.spec.name==='plugins.detail.section')
+  assert.equal(official.component({subject:{kind:'bundle',pkg:{name:'unrelated'}}}),null)
+  const enhanced=official.component({subject:{kind:'bundle',pkg:{name:'@deepseek-ai/dsh-experimental-voice-input-bundle'}}})
+  assert.equal(enhanced.props['data-chatty-enhancement'],true)
 })
 
 test('客户端 bundle：组件在无设置、无草稿的初始状态下也能渲染', async () => {
