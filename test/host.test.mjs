@@ -82,7 +82,7 @@ function harness() {
   }
   const anchor = fileURLToPath(
     new URL(
-      '../../.local/upgrade/20261011-official-daily/.local/runtime/0.2.0-rc.2/node_modules/@deepseek-ai/dsh/package.json',
+      './fixtures/desktop-0212.package.json',
       import.meta.url
     )
   )
@@ -91,7 +91,7 @@ function harness() {
     speechController: remote,
     sessions: { get: (id) => (id === 's1' ? { id } : undefined) },
     profileContext: { installAnchor: anchor },
-    pluginPackages: { packageOf: () => ({ version: '0.2.0-rc.2' }) },
+    pluginPackages: { packageOf: () => ({ version: JSON.parse(fs.readFileSync(new URL('../compatibility.json', import.meta.url))).dshVersion }) },
     configEditor: {
       entries: () => rows,
       configuration: () =>

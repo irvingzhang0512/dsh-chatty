@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import z from '@deepseek-ai/schemastery'
+import { Config as SenseVoiceConfig } from '@deepseek-ai/dsh-experimental-speech-to-text-sensevoice'
 import { createConfig } from '../lib/config.js'
 import { fieldsOf } from '../lib/native-settings.js'
 import { presentOwner } from '../lib/settings-presentation.js'
@@ -13,17 +14,27 @@ import { createModelCatalog, parseSiliconModels, parseVolcanoModels } from '../l
 import { createTtsProvider } from '../lib/tts/providers.js'
 const volc=ops=>({Result:{DocumentCode:'agent-plan-personal-voice-model',Content:JSON.stringify({data:{'0':{ops:ops.map(insert=>({insert}))}}})}})
 const field=(name,id)=>`<span class="font-medium font-mono text-fd-primary">${name}</span><span class="font-mono font-medium">required</span><span>Value in</span><code>&quot;${id}&quot;</code></div>`
-test('全部 100 项配置有中文帮助与默认、生效说明，官方归属分开',()=>{
+test('全部 101 项配置有中文帮助与默认、生效说明，官方归属分开',()=>{
   const fields=fieldsOf(createConfig(z).toJSON());assert.equal(fields.length,74)
   const p=presentOwner({owner:'chatty',fields,applies:'下次任务'})
   const text=fs.readFileSync(new URL('../docs/CONFIG-UI.md',import.meta.url),'utf8')
   let total=74
   for(const owner of ['speech','api','sensevoice']){const paths=[...text.matchAll(new RegExp('\\| '+owner+' \\| `([^`]+)`','g'))].map(x=>x[1]);total+=paths.length;for(const f of presentOwner({owner,fields:paths.map(path=>({path})),applies:'重载所有者'}).fields)assert.match(f.presentation.section,/识别|API|本地/)}
-  assert.equal(total,100)
+  assert.equal(total,101)
   for(const f of p.fields){assert.match(f.presentation.label,/[\u4e00-\u9fff]/);assert.match(f.presentation.help,/默认：/);assert.match(f.presentation.help,/生效：/)}
   assert.match(p.fields.find(f=>f.path==='stt.vad.silence_timeout_ms').presentation.help,/停顿不会发送/)
   assert.equal(p.fields.find(f=>f.path==='stt.vad.silence_timeout_ms').presentation.advanced,false)
   assert.equal(p.fields.find(f=>f.path==='polish.model_id').presentation.tab,'指令与草稿')
+})
+
+test('目标官方 SenseVoice schema 的每个字段都能展示，首段 VAD 补回字段保留官方默认和边界',()=>{
+  const fields=fieldsOf(SenseVoiceConfig.toJSON())
+  const owner=presentOwner({owner:'sensevoice',fields,applies:'重载所有者'})
+  assert.equal(owner.fields.length,fields.length)
+  const padding=owner.fields.find(field=>field.path==='vadOnsetPaddingSeconds')
+  assert.ok(padding)
+  assert.match(padding.presentation.help,/0\.3 秒/)
+  assert.match(padding.presentation.help,/第一个人声片段/)
 })
 test('火山只解析支持型号段，排除代码和音色；新型号标记未实测',()=>{
   const payload=volc(['支持的模型：\n豆包语音合成（doubao-seed-tts-2.0）\n豆包语音识别（doubao-seed-asr-2.0）\n豆包语音识别（doubao-seed-asr-3.0）\n接口信息：\n代码 doubao-seed-asr-99.0'])

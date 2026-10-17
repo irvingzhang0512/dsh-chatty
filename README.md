@@ -1,8 +1,10 @@
 # dsh-chatty
 
+当前兼容升级与验证见 [Desktop 0.2.1-rc.2](docs/DSH-UPGRADE-20261017.md)。历史版本验收仍保留，不代表本版已公开发布。
+
 把连续说出的多句话写入 DSH 原生输入框，再由你明确发送；同时提供口令、润色和回复朗读。沿用听写／朗读按钮、dock 和分区设置卡。
 
-当前版本 **0.2.0-rc.2+chatty.3**，精确匹配 Desktop 与官方语音 Bundle **0.2.0-rc.2**。配置位于官方语音输入详情的原内容下方；GitHub固定版本尚待发布，实际结果见[验证记录](docs/VERIFICATION-0.2.0-rc.2+chatty.3.md)。
+当前版本 **0.2.1-rc.2+chatty.1**，精确匹配 Desktop 与官方语音 Bundle **0.2.1-rc.2**。配置位于官方语音输入详情的原内容下方；GitHub固定版本尚待发布，实际结果见[验证记录](docs/DSH-UPGRADE-20261017.md)。
 
 ## 功能
 
@@ -19,11 +21,11 @@
 
 ## 安装
 
-需要 Desktop 及官方语音 Bundle 五包均为0.2.0-rc.2，不匹配停止增强并保留诊断。官方配置与录音组件保持原注册，Chatty仅通过公开槽隐藏重复麦克风；停用／卸载增强释放遮蔽。用户显式禁用官方UI的覆盖保留，不自动改写。
+需要 Desktop 及官方语音 Bundle 五包均为0.2.1-rc.2，不匹配停止增强并保留诊断。官方配置与录音组件保持原注册，Chatty仅通过公开槽隐藏重复麦克风；停用／卸载增强释放遮蔽。用户显式禁用官方UI的覆盖保留，不自动改写。
 
 正式安装使用固定 GitHub repo URL，仓库已提交 lib/index.js、lib/client.js 和 patch，正常安装无需现场编译，也不需要 tgz。**以下 ref 是待发布目标，当前不能用于安装：**
 
-`git+https://github.com/irvingzhang0512/dsh-chatty.git#v0.2.0-rc.2+chatty.3`
+`git+https://github.com/irvingzhang0512/dsh-chatty.git#v0.2.1-rc.2+chatty.1`
 
 发布后先用根 tools/desktop-plugin-source.mjs 核对固定 ref、完整 commit 和精确组合，再使用 Desktop 自带插件 CLI 的 add；同一 Bundle 下按 Chatty 整数修订比较。详见 [安装与版本](docs/INSTALL.md)。
 
@@ -53,7 +55,7 @@ Chatty增强保留五标签；底部“官方高级参数（补充）”默认�
 
 ## 开发与文档
 
-[PRD](docs/PRD.md) · [当前 SPEC](docs/SPEC.md) · [架构](docs/ARCHITECTURE.md) · [配置](docs/CONFIG.md) · [Desktop 开发](docs/DEVELOPMENT.md) · [验收](docs/VERIFICATION-0.2.0-rc.2+chatty.3.md)
+[PRD](docs/PRD.md) · [当前 SPEC](docs/SPEC.md) · [架构](docs/ARCHITECTURE.md) · [配置](docs/CONFIG.md) · [Desktop 开发](docs/DEVELOPMENT.md) · [验收](docs/DSH-UPGRADE-20261017.md)
 
 原始[REQUIREMENTS](docs/REQUIREMENTS.md)只读保留历史，当前行为以[官方详情增强契约](docs/OFFICIAL-SETTINGS-20261014.md)为准。无新增第三方运行时依赖，官方peer来自目标宿主。
 

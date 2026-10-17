@@ -1,5 +1,7 @@
 # 固定 Git 来源安装与版本
 
+当前基线为Desktop／官方五包0.2.1-rc.2与chatty.1，采用本地固定提交的预构建包交付，完整SHA／内容散列在根Desktop锁；下述旧GitHub tag仍是未公开的历史候选，不能作为当前可用来源。[本版验证](DSH-UPGRADE-20261017.md)。
+
 版本：0.2.0-rc.2+chatty.3；Desktop／Bundle／四个子包精确0.2.0-rc.2。正式tag未公开，下面是待发布安装说明。
 
 正式 repo URL：git+https://github.com/irvingzhang0512/dsh-chatty.git#v0.2.0-rc.2+chatty.3，或发布后完整40位commit。不用浮动分支或缩写SHA。

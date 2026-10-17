@@ -1,3 +1,8 @@
+# 0.2.1-rc.2+chatty.1 — 2026-10-17
+
+- 五个官方语音包与 Desktop 精确匹配 0.2.1-rc.2。为官方新增 vadOnsetPaddingSeconds 补中文说明并增加目标真实 schema 覆盖测试；修复新版设置接口因缺说明而失败。现为 Chatty74／speech2／api2／SenseVoice23，共101字段。官方输入设备控件保留，Chatty mic_device_id 仍只负责自身采集；未把两者冒充同一持久设置。
+- build:client／lint及210项测试通过，实际范围见[升级验收](DSH-UPGRADE-20261017.md)。
+
 # 0.2.0-rc.2+chatty.3 — 2026-10-14
 
 - 配置移入官方语音详情原内容下方，保留官方原2项；增强74项五标签，底部折叠官方24项，三个下方所有者各自保存／弃稿／重载。

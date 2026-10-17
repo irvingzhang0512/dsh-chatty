@@ -1,6 +1,6 @@
 {
   "name": "@irvingzhang0512/dsh-chatty",
-  "version": "0.2.0-rc.2+chatty.3",
+  "version": "0.2.1-rc.2+chatty.1",
   "description": "基于官方语音 Bundle 的持续听写、语音口令、草稿润色与独立朗读增强。",
   "license": "MIT",
   "type": "module",
@@ -53,20 +53,20 @@
     }
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh": "0.2.0-rc.2",
-    "@deepseek-ai/cordis": "4.0.4",
-    "@deepseek-ai/dsh-credentials": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-host-webserver": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-llm": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-tools": "0.2.0-rc.2",
-    "@deepseek-ai/schemastery": "3.18.4",
-    "@deepseek-ai/dsh-experimental-voice-input-bundle": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-experimental-speech-to-text": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-experimental-api-speech-to-text": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-experimental-speech-to-text-sensevoice": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-experimental-client-ui-voice-input": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-native-command": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-credentials-local": "0.2.0-rc.2"
+    "@deepseek-ai/dsh": "0.2.1-rc.2",
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/dsh-credentials": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-host-webserver": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-llm": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.1-rc.2",
+    "@deepseek-ai/schemastery": "3.18.5",
+    "@deepseek-ai/dsh-experimental-voice-input-bundle": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-experimental-speech-to-text": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-experimental-api-speech-to-text": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-experimental-speech-to-text-sensevoice": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-experimental-client-ui-voice-input": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-native-command": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-credentials-local": "0.2.1-rc.2"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/dsh": {
@@ -82,5 +82,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/irvingzhang0512/dsh-chatty.git"
+  },
+  "engines": {
+    "dsh": "0.2.1-rc.2"
   }
 }

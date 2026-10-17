@@ -1,6 +1,6 @@
 # Chatty 架构与接口契约
 
-chatty-official-settings-20261014-v1；目标 Chatty 0.2.0-rc.2+chatty.3、Desktop／官方五包 0.2.0-rc.2。产品规格见 [SPEC](SPEC.md)，本版挂载／状态与保存契约见 [官方详情增强](OFFICIAL-SETTINGS-20261014.md)；既有请求和迁移见 [实施契约](IMPLEMENTATION-20261013.md)。
+chatty-official-settings-20261014-v1；目标 Chatty 0.2.1-rc.2+chatty.1、Desktop／官方五包 0.2.1-rc.2。产品规格见 [SPEC](SPEC.md)，本版挂载／状态与保存契约见 [官方详情增强](OFFICIAL-SETTINGS-20261014.md)；既有请求和迁移见 [实施契约](IMPLEMENTATION-20261013.md)。
 
 ## 数据与所有权
 
