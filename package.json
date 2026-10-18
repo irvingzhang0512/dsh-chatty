@@ -1,7 +1,7 @@
 {
   "name": "@irvingzhang0512/dsh-chatty",
-  "version": "0.2.1-rc.2+chatty.1",
-  "description": "基于官方语音 Bundle 的持续听写、语音口令、草稿润色与独立朗读增强。",
+  "version": "0.2.1-rc.2+rev.1",
+  "description": "为 DSH 内置语音输入服务增加新功能，支持 TTS 朗读、STT 持续听写、语音口令、草稿润色及远程 ASR 配置。",
   "license": "MIT",
   "type": "module",
   "main": "./lib/index.js",
@@ -9,7 +9,8 @@
     ".": "./lib/index.js",
     "./client": "./lib/client.js",
     "./package.json": "./package.json",
-    "./cordis.patch.yml": "./cordis.patch.yml"
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json"
   },
   "files": [
     "lib/*.js",
@@ -20,7 +21,8 @@
     "README.md",
     "LICENSE",
     "compatibility.json",
-    "docs"
+    "docs",
+    "locale"
   ],
   "keywords": [
     "dsh",

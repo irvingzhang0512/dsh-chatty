@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packageName": "@irvingzhang0512/dsh-chatty",
-  "chattyVersion": "0.2.1-rc.2+chatty.1",
+  "chattyVersion": "0.2.1-rc.2+rev.1",
   "bundleVersion": "0.2.1-rc.2",
   "chattyRevision": 1,
   "dshVersion": "0.2.1-rc.2",

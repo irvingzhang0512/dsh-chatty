@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Irving · Voice Enhancement",
+    "description": "Extend the DSH built-in voice input service with TTS read-aloud, continuous STT dictation, voice commands, draft polishing, and remote ASR configuration."
+  }
+}

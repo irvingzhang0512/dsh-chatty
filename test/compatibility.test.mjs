@@ -14,16 +14,16 @@ const manifest = JSON.parse(
   )
 test('同基线修订按整数比较，不能忽略构建元数据或跨基线自动更新', () => {
   assert.equal(
-    compareChattyVersions('0.2.0-rc.2+chatty.10', '0.2.0-rc.2+chatty.2'),
+    compareChattyVersions('0.2.0-rc.2+rev.10', '0.2.0-rc.2+rev.2'),
     1
   )
   assert.equal(compareChattyVersions(manifest.version, manifest.version), 0)
   assert.throws(
-    () => compareChattyVersions('0.2.1+chatty.1', manifest.version),
+    () => compareChattyVersions('0.2.1+rev.1', manifest.version),
     /基线/
   )
   assert.throws(() => splitChattyVersion('0.2.0-rc.2'))
-  assert.throws(() => splitChattyVersion('0.2.0+chatty.0'))
+  assert.throws(() => splitChattyVersion('0.2.0+rev.0'))
 })
 test('实际包、所有精确 peers、五包与自版本清单必须同时匹配', () => {
   const actual = {
@@ -40,7 +40,7 @@ test('实际包、所有精确 peers、五包与自版本清单必须同时匹�
   )
   assert.equal(
     validateCompatibility(
-      { ...manifest, version: contract.bundleVersion + '+chatty.' + (contract.chattyRevision + 1) },
+      { ...manifest, version: contract.bundleVersion + '+rev.' + (contract.chattyRevision + 1) },
       contract,
       actual
     ).matched,

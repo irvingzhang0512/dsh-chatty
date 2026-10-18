@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Irving · 语音增强",
+    "description": "为 DSH 内置语音输入服务增加新功能，支持 TTS 朗读、STT 持续听写、语音口令、草稿润色及远程 ASR 配置。"
+  }
+}

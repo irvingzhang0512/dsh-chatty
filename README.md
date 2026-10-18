@@ -1,4 +1,4 @@
-# dsh-chatty
+# Irving · 语音增强
 
 为 DSH 内置语音输入服务增加持续听写、语音口令、草稿润色和远程 ASR 配置，并通过 TTS 朗读模型回复。
 
@@ -12,7 +12,7 @@
 
 ## 安装
 
-当前本地版本 **0.2.1-rc.2+chatty.1**，要求 **DSH Desktop 0.2.1-rc.2**，并启用同版本官方语音输入 Bundle。官方语音五包的实际版本需要匹配，详见 [安装与版本](docs/INSTALL.md)及 [本次兼容记录](docs/DSH-UPGRADE-20261017.md)。
+当前本地版本 **0.2.1-rc.2+rev.1**，要求 **DSH Desktop 0.2.1-rc.2**，并启用同版本官方语音输入 Bundle。官方语音五包的实际版本需要匹配，详见 [安装与版本](docs/INSTALL.md)及 [本次兼容记录](docs/DSH-UPGRADE-20261017.md)。
 
 截至 2026-10-18，[公开源码仓库](https://github.com/irvingzhang0512/dsh-chatty)默认分支包版本为 **0.1.0**，当前 Desktop 适配版尚未公开推送或发布。
 

@@ -36,3 +36,8 @@ chatty-official-settings-20261014-v1；目标 Chatty 0.2.1-rc.2+chatty.1、Deskt
 `client-src/70-settings.js` 管理四个所有者的独立草稿与 CAS，`71-settings-controls.js` 使用原生 SegmentedTabs／Button／Switch／Tooltip，搜索目录、状态、来源和自定义值。打开卡片只读缓存与提供者元数据；LLM listModels 可能执行远端发现，只有点击刷新时才调用。成功保存只推进该所有者 token；刷新目录、本地准备或凭据状态不调用全表重载。
 
 v3 在 plugins.detail.section 追加唯一表单，官方原2项不由该表单编辑；chatty／api／sensevoice独立控件／保存／弃稿。72-official-integration 管理公开语音状态流、activity优先级遮蔽与生命周期；自身配置卡改为公开 pluginNavigation 跳转。
+
+
+## 2026-10-18 统一展示与套件交付契约
+
+依据用户已确认的 office-suite-implementation-20261018-v1。Irving · 语音增强／Irving · Voice Enhancement，包 @irvingzhang0512/dsh-chatty 统一 0.2.1-rc.2+rev.1。展示资源通过 locale 导出提供；原条目 id、服务／工具／客户端身份、配置及存储保持。本插件保持独立安装。版本按完整字符串与固定散列核对；本节不授权原先待确认的业务扩展。
