@@ -81,3 +81,5 @@
 - [安装说明](docs/INSTALL.md)、[完整配置](docs/CONFIG.md)、[配置界面](docs/CONFIG-UI.md)。
 - [当前功能规格](docs/SPEC.md)、[更新记录](docs/CHANGELOG.md)。
 - [架构](docs/ARCHITECTURE.md)、[开发与验证](docs/DEVELOPMENT.md)。
+
+本次统一名称、版本与办公套件的实测范围见 [2026-10-18 验证记录](docs/VERIFICATION-OFFICE-20261018.md)。
