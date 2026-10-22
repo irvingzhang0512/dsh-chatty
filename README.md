@@ -79,7 +79,11 @@
 ## 更多文档
 
 - [安装说明](docs/INSTALL.md)、[完整配置](docs/CONFIG.md)、[配置界面](docs/CONFIG-UI.md)。
-- [当前功能规格](docs/SPEC.md)、[更新记录](docs/CHANGELOG.md)。
+- [当前规格与待定需求索引](openspec/MIGRATION.md)、[更新记录](docs/CHANGELOG.md)。
 - [架构](docs/ARCHITECTURE.md)、[开发与验证](docs/DEVELOPMENT.md)。
 
 本次统一名称、版本与办公套件的实测范围见 [2026-10-18 验证记录](docs/VERIFICATION-OFFICE-20261018.md)。
+
+## 开发需求与规格
+
+后续开发通过 [OpenSpec迁移索引](openspec/MIGRATION.md) 查找当前能力与候选变更；新功能先完善提案、规格、设计及任务，确认具体版本后实施。原 [SPEC](docs/SPEC.md)与原始需求作为只读来源保留，旧F编号在索引中逐条映射。技术和使用说明仍保留原职责；本次只整理文档，不改变业务资料、安装状态或功能。

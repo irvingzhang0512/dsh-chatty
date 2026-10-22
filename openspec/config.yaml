@@ -1,0 +1,11 @@
+schema: spec-driven
+
+context: |
+  默认中文，保留 OpenSpec 的英文结构标题、SHALL/WHEN/THEN。
+  本仓库迁移索引为 openspec/MIGRATION.md；主规格仅承载已落地的既有预期。
+  原始需求、旧SPEC和历史证据冻结；技术/使用文档本轮不动，后续实现同步实际说明。
+  新功能以 change proposal/specs/design/tasks/review 管理，不维护第二份独立产品真源。
+  用户须明确确认具体文档版后才开发；校验、artifacts ready 和任务勾选不等于批准或实现。
+  预期不变的 Bug 无需强制提案；不得改规格将错误解释为正确。
+  配置迁移覆盖旧持久配置、失效字段、完整引用、CAS/备份/失败恢复，未知字段保留。
+  实现和验证状态分开记录；纯文档迁移不改源码、测试、业务资料、运行配置、版本。
