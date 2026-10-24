@@ -85,3 +85,7 @@ npm run lint                                # ESM 语法检查 + 片段/生成�
 6. 需要实测时使用根 Desktop 隔离工具，先实际 carrier 再原生窗口；正常退出隔离实例后同步副本重启。不要恢复已停用的 Web 服务。
 
 > 不要改动 `docs/REQUIREMENTS.md`：它是需求来源，只能由维护者主动更新。`lib/client.js` 是生成物但**需要提交**，不要手改。
+
+## 2026-10-24 Git 分发约定
+
+根 windows-personal-workspace-v2 已确认自研通过 GitHub 固定提交安装：提交完整运行产物和资源，不依赖安装期构建 hook；开发检查仍显式运行既有 typecheck／test／build 或 JS test／lint。此约定替代旧的 lib 忽略／现场 prepack 做法；不提交 node_modules，不修改业务行为。源码推送、公网安装和本地验证分别记录。
