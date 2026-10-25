@@ -82,7 +82,7 @@ function harness() {
   }
   const anchor = fileURLToPath(
     new URL(
-      './fixtures/desktop-0212.package.json',
+      './fixtures/desktop-0213.package.json',
       import.meta.url
     )
   )
@@ -191,6 +191,17 @@ test('目标 Host 必须加载真实 peers，注册具名服务并停用自动�
   }
 })
 test('服务的上下文代理变化不误判重载，注册表缺增强 Provider 时拒绝',async()=>{const h=harness();try{h.services.speechToText=new Proxy(h.services.speechToText,{});assert.equal((await call(h,'status')).body.compatibility.matched,true);h.registered.delete('chatty-volcano');assert.equal((await call(h,'status')).body.compatibility.matched,false);const blocked=await call(h,'stt/capture/start',{sessionId:'s1'});assert.equal(blocked.body.error.code,'compatibility')}finally{await h.close()}})
+test('IM 5.6 共享官方 speechToText：Chatty 卸载只注销自己的 Provider', async () => {
+  const h = harness(), shared = h.services.speechToText
+  const disposeOther = shared.register({ info: { id: 'other-consumer-provider' } })
+  assert.equal((await call(h, 'status')).body.stt.provider, 'sensevoice-local')
+  assert.equal((await h.services.speechController.transcribe({ providerId: 'sensevoice-local', audioBase64: 'AA==' })).text, '官方识别结果')
+  await h.close()
+  assert.equal(h.services.speechToText, shared)
+  assert.deepEqual([...h.registered.keys()], ['other-consumer-provider'])
+  assert.equal((await h.services.speechController.transcribe({ providerId: 'sensevoice-local', audioBase64: 'AA==' })).text, '官方识别结果')
+  await disposeOther()
+})
 test('完整录音兼容路径只调用官方 Remote，无跨供应商回退', async () => {
   const h = harness()
   try {

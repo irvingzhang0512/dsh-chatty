@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "packageName": "@irvingzhang0512/dsh-chatty",
-  "chattyVersion": "0.2.1-rc.2+rev.1",
-  "bundleVersion": "0.2.1-rc.2",
+  "chattyVersion": "0.2.1-rc.3+rev.1",
+  "bundleVersion": "0.2.1-rc.3",
   "chattyRevision": 1,
-  "dshVersion": "0.2.1-rc.2",
+  "dshVersion": "0.2.1-rc.3",
   "speechPackages": {
-    "@deepseek-ai/dsh-experimental-voice-input-bundle": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-experimental-speech-to-text": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-experimental-api-speech-to-text": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-experimental-speech-to-text-sensevoice": "0.2.1-rc.2",
-    "@deepseek-ai/dsh-experimental-client-ui-voice-input": "0.2.1-rc.2"
+    "@deepseek-ai/dsh-experimental-voice-input-bundle": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-experimental-speech-to-text": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-experimental-api-speech-to-text": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-experimental-speech-to-text-sensevoice": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-experimental-client-ui-voice-input": "0.2.1-rc.3"
   }
 }
