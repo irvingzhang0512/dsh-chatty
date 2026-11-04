@@ -1,6 +1,6 @@
 {
   "name": "@irvingzhang0512/dsh-chatty",
-  "version": "0.2.1-rc.5+rev.1",
+  "version": "0.2.2-rc.1+rev.1",
   "description": "为 DSH 内置语音输入服务增加新功能，支持 TTS 朗读、STT 持续听写、语音口令、草稿润色及远程 ASR 配置。",
   "license": "MIT",
   "type": "module",
@@ -55,20 +55,20 @@
     }
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh": "0.2.1-rc.5",
-    "@deepseek-ai/cordis": "4.0.5",
-    "@deepseek-ai/dsh-credentials": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-host-webserver": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-llm": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-tools": "0.2.1-rc.5",
-    "@deepseek-ai/schemastery": "3.18.5",
-    "@deepseek-ai/dsh-experimental-voice-input-bundle": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-experimental-speech-to-text": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-experimental-api-speech-to-text": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-experimental-speech-to-text-sensevoice": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-experimental-client-ui-voice-input": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-native-command": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-credentials-local": "0.2.1-rc.5"
+    "@deepseek-ai/dsh": "0.2.2-rc.1",
+    "@deepseek-ai/cordis": "4.1.0",
+    "@deepseek-ai/dsh-credentials": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-host-webserver": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-llm": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
+    "@deepseek-ai/schemastery": "3.19.0",
+    "@deepseek-ai/dsh-experimental-voice-input-bundle": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-experimental-speech-to-text": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-experimental-api-speech-to-text": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-experimental-speech-to-text-sensevoice": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-experimental-client-ui-voice-input": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-native-command": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-credentials-local": "0.2.2-rc.1"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/dsh": {
@@ -86,6 +86,6 @@
     "url": "https://github.com/irvingzhang0512/dsh-chatty.git"
   },
   "engines": {
-    "dsh": "0.2.1-rc.5"
+    "dsh": "0.2.2-rc.1"
   }
 }

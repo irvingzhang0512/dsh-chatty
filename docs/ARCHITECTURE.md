@@ -41,3 +41,10 @@ v3 在 plugins.detail.section 追加唯一表单，官方原2项不由该表单�
 ## 2026-10-18 统一展示与套件交付契约
 
 依据用户已确认的 office-suite-implementation-20261018-v1。Irving · 语音增强／Irving · Voice Enhancement，包 @irvingzhang0512/dsh-chatty 统一 0.2.1-rc.2+rev.1。展示资源通过 locale 导出提供；原条目 id、服务／工具／客户端身份、配置及存储保持。本插件保持独立安装。版本按完整字符串与固定散列核对；本节不授权原先待确认的业务扩展。
+
+
+## DSH 0.2.2-rc.1 兼容契约（2026-11-04）
+
+宿主及五官方语音包精确绑定 0.2.2-rc.1，展示与迁移区分 raw/effectiveConfig；保存原始覆盖并保留取消、CAS、凭据边界，现有 session projection snapshot 读取接口保持。
+
+具体差异与验收见 [本次设计](../openspec/changes/adapt-dsh-022-rc1/design.md)。
